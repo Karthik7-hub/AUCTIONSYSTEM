@@ -7,13 +7,13 @@ import {
 } from 'lucide-react';
 
 // --- CONFIGURATION ---
-// Changed from localhost to your Render Backend URL
 const API_BASE_URL = 'https://spl-auctionsystem-backend.onrender.com';
 
 const CATEGORIES = ['Marquee', 'Set 1', 'Set 2', 'Set 3', 'Set 4'];
 const ROLES = ['Batsman', 'Bowler', 'All Rounder', 'Wicket Keeper'];
 
-export default function SetupDashboard({ data, setView }) {
+// Added 'onRefresh' prop so the parent can update data without a page reload
+export default function SetupDashboard({ data, setView, onRefresh }) {
     const [auctionCode, setAuctionCode] = useState('');
     const [activeTab, setActiveTab] = useState('players');
     const [filterCategory, setFilterCategory] = useState('All');
@@ -35,14 +35,14 @@ export default function SetupDashboard({ data, setView }) {
     const addTeam = async () => {
         if (!newTeam.name) return;
         try {
-            // Updated to use Render URL
             await axios.post(`${API_BASE_URL}/api/teams`, newTeam);
             setNewTeam({ name: '', budget: 1000, color: '#3B82F6' });
-            // Ideally trigger a data refresh here
-            window.location.reload();
+
+            // Call the parent refresh function if it exists
+            if (onRefresh) onRefresh();
         } catch (error) {
             console.error("Error adding team:", error);
-            alert("Failed to add team. Check console.");
+            alert("Failed to add team.");
         }
     };
 
@@ -50,9 +50,10 @@ export default function SetupDashboard({ data, setView }) {
         e.stopPropagation();
         if (window.confirm('Delete this team?')) {
             try {
-                // Updated to use Render URL
                 await axios.delete(`${API_BASE_URL}/api/teams/${id}`);
-                window.location.reload();
+
+                // Call the parent refresh function if it exists
+                if (onRefresh) onRefresh();
             } catch (error) {
                 console.error("Error deleting team:", error);
             }
@@ -62,22 +63,24 @@ export default function SetupDashboard({ data, setView }) {
     const addPlayer = async () => {
         if (!newPlayer.name) return;
         try {
-            // Updated to use Render URL
             await axios.post(`${API_BASE_URL}/api/players`, newPlayer);
             setNewPlayer({ ...newPlayer, name: '', basePrice: 20 });
-            window.location.reload();
+
+            // Call the parent refresh function if it exists
+            if (onRefresh) onRefresh();
         } catch (error) {
             console.error("Error adding player:", error);
-            alert("Failed to add player. Check console.");
+            alert("Failed to add player.");
         }
     };
 
     const deletePlayer = async (id) => {
         if (window.confirm('Are you sure you want to delete this player?')) {
             try {
-                // Updated to use Render URL
                 await axios.delete(`${API_BASE_URL}/api/players/${id}`);
-                window.location.reload();
+
+                // Call the parent refresh function if it exists
+                if (onRefresh) onRefresh();
             } catch (error) {
                 console.error("Error deleting player:", error);
                 alert("Error deleting player");
@@ -104,7 +107,7 @@ export default function SetupDashboard({ data, setView }) {
                                     <span>Spent: ₹{selectedTeam.spent}L</span>
                                 </div>
                             </div>
-                            <button onClick={() => setSelectedTeam(null)} className="relative z-10 bg-black/20 hover:bg-black/40 p-2 rounded-full transition-colors">
+                            <button type="button" onClick={() => setSelectedTeam(null)} className="relative z-10 bg-black/20 hover:bg-black/40 p-2 rounded-full transition-colors">
                                 <X className="w-5 h-5 text-white" />
                             </button>
                         </div>
@@ -175,7 +178,7 @@ export default function SetupDashboard({ data, setView }) {
                             <div className="bg-slate-100 px-4 py-2 rounded-lg border border-slate-200 text-sm font-mono font-bold text-slate-600 tracking-widest">
                                 {auctionCode}
                             </div>
-                            <button onClick={() => setView('login')} className="text-red-500 hover:bg-red-50 p-2.5 rounded-full transition-colors border border-transparent hover:border-red-100">
+                            <button type="button" onClick={() => setView('login')} className="text-red-500 hover:bg-red-50 p-2.5 rounded-full transition-colors border border-transparent hover:border-red-100">
                                 <LogOut className="w-5 h-5" />
                             </button>
                         </div>
@@ -190,6 +193,7 @@ export default function SetupDashboard({ data, setView }) {
 
                     {/* Start Button */}
                     <button
+                        type="button"
                         onClick={() => setView('admin-live')}
                         disabled={data.teams.length < 2 || data.players.length === 0}
                         className="group w-full py-4 bg-slate-900 hover:bg-slate-800 text-white rounded-2xl font-bold shadow-xl hover:shadow-2xl disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-3 transition-all transform hover:-translate-y-1 relative overflow-hidden"
@@ -223,7 +227,7 @@ export default function SetupDashboard({ data, setView }) {
                                     <input type="color" value={newTeam.color} onChange={e => setNewTeam({ ...newTeam, color: e.target.value })} className="w-full mt-1 h-[46px] border-none rounded-xl cursor-pointer bg-transparent" />
                                 </div>
                             </div>
-                            <button onClick={addTeam} className="w-full bg-blue-600 hover:bg-blue-700 text-white py-3 rounded-xl font-bold transition-colors shadow-lg shadow-blue-500/20 active:scale-95">Create Team</button>
+                            <button type="button" onClick={addTeam} className="w-full bg-blue-600 hover:bg-blue-700 text-white py-3 rounded-xl font-bold transition-colors shadow-lg shadow-blue-500/20 active:scale-95">Create Team</button>
                         </div>
                     </div>
 
@@ -256,7 +260,7 @@ export default function SetupDashboard({ data, setView }) {
                                     {CATEGORIES.map(c => <option key={c} value={c}>{c}</option>)}
                                 </select>
                             </div>
-                            <button onClick={addPlayer} className="w-full bg-green-600 hover:bg-green-700 text-white py-3 rounded-xl font-bold transition-colors shadow-lg shadow-green-500/20 active:scale-95">Add to Pool</button>
+                            <button type="button" onClick={addPlayer} className="w-full bg-green-600 hover:bg-green-700 text-white py-3 rounded-xl font-bold transition-colors shadow-lg shadow-green-500/20 active:scale-95">Add to Pool</button>
                         </div>
                     </div>
                 </div>
@@ -267,12 +271,14 @@ export default function SetupDashboard({ data, setView }) {
                     {/* Segmented Tab Control */}
                     <div className="bg-slate-200/50 p-1.5 rounded-xl inline-flex w-full mb-6 gap-1">
                         <button
+                            type="button"
                             onClick={() => setActiveTab('players')}
                             className={`flex-1 py-2.5 rounded-lg text-sm font-bold flex items-center justify-center gap-2 transition-all ${activeTab === 'players' ? 'bg-white text-slate-800 shadow-sm' : 'text-slate-500 hover:text-slate-700'}`}
                         >
                             <List className="w-4 h-4" /> Player Registry <span className="bg-slate-100 text-slate-600 px-2 py-0.5 rounded text-xs ml-1">{data.players.length}</span>
                         </button>
                         <button
+                            type="button"
                             onClick={() => setActiveTab('teams')}
                             className={`flex-1 py-2.5 rounded-lg text-sm font-bold flex items-center justify-center gap-2 transition-all ${activeTab === 'teams' ? 'bg-white text-slate-800 shadow-sm' : 'text-slate-500 hover:text-slate-700'}`}
                         >
@@ -288,9 +294,9 @@ export default function SetupDashboard({ data, setView }) {
                                     <input placeholder="Search players..." value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)} className="w-full pl-10 pr-4 py-2.5 bg-white border border-slate-200 rounded-xl text-sm font-medium focus:outline-none focus:border-blue-500 transition-colors" />
                                 </div>
                                 <div className="flex gap-2 w-full sm:w-auto overflow-x-auto pb-1 sm:pb-0 no-scrollbar">
-                                    <button onClick={() => setFilterCategory('All')} className={`px-4 py-2 rounded-lg text-xs font-bold transition-all border ${filterCategory === 'All' ? 'bg-slate-800 text-white border-slate-800' : 'bg-white border-slate-200 text-slate-500 hover:border-slate-300'}`}>All</button>
+                                    <button type="button" onClick={() => setFilterCategory('All')} className={`px-4 py-2 rounded-lg text-xs font-bold transition-all border ${filterCategory === 'All' ? 'bg-slate-800 text-white border-slate-800' : 'bg-white border-slate-200 text-slate-500 hover:border-slate-300'}`}>All</button>
                                     {CATEGORIES.map(cat => (
-                                        <button key={cat} onClick={() => setFilterCategory(cat)} className={`px-4 py-2 rounded-lg text-xs font-bold whitespace-nowrap transition-all border ${filterCategory === cat ? 'bg-slate-800 text-white border-slate-800' : 'bg-white border-slate-200 text-slate-500 hover:border-slate-300'}`}>
+                                        <button key={cat} type="button" onClick={() => setFilterCategory(cat)} className={`px-4 py-2 rounded-lg text-xs font-bold whitespace-nowrap transition-all border ${filterCategory === cat ? 'bg-slate-800 text-white border-slate-800' : 'bg-white border-slate-200 text-slate-500 hover:border-slate-300'}`}>
                                             {cat}
                                         </button>
                                     ))}
@@ -343,7 +349,7 @@ export default function SetupDashboard({ data, setView }) {
                                                         )}
                                                     </td>
                                                     <td className="p-4 pr-6 text-right">
-                                                        <button onClick={() => deletePlayer(player._id)} className="p-2 hover:bg-red-50 text-slate-300 hover:text-red-500 rounded-lg transition-colors">
+                                                        <button type="button" onClick={() => deletePlayer(player._id)} className="p-2 hover:bg-red-50 text-slate-300 hover:text-red-500 rounded-lg transition-colors">
                                                             <Trash2 className="w-4 h-4" />
                                                         </button>
                                                     </td>
@@ -364,7 +370,7 @@ export default function SetupDashboard({ data, setView }) {
                                 const percentSpent = Math.min((team.spent / team.budget) * 100, 100);
                                 return (
                                     <div key={team._id} onClick={() => setSelectedTeam(team)} className="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm hover:shadow-lg hover:-translate-y-1 transition-all relative overflow-hidden group cursor-pointer">
-                                        <button onClick={(e) => deleteTeam(e, team._id)} className="absolute top-4 right-4 text-slate-300 hover:text-red-500 opacity-0 group-hover:opacity-100 transition-opacity z-10 bg-white p-2 rounded-full shadow-sm"><Trash2 className="w-4 h-4" /></button>
+                                        <button type="button" onClick={(e) => deleteTeam(e, team._id)} className="absolute top-4 right-4 text-slate-300 hover:text-red-500 opacity-0 group-hover:opacity-100 transition-opacity z-10 bg-white p-2 rounded-full shadow-sm"><Trash2 className="w-4 h-4" /></button>
 
                                         <div className="flex items-center gap-4 mb-5">
                                             <div className="w-16 h-16 rounded-2xl flex items-center justify-center text-white font-black text-3xl shadow-lg transform group-hover:scale-105 transition-transform" style={{ backgroundColor: team.color }}>

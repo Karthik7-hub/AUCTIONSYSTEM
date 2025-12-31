@@ -6,7 +6,7 @@ import SetupDashboard from './components/Admin/SetupDashboard';
 import AuctioneerControls from './components/Admin/AuctioneerControls';
 import ViewerScreen from './components/Viewer/ViewerScreen';
 
-const SOCKET_URL = 'http://localhost:5000';
+const SOCKET_URL = 'https://spl-auctionsystem-backend.onrender.com';
 const socket = io(SOCKET_URL, {
     transports: ['websocket'], // Force websocket for better performance
     reconnection: true,

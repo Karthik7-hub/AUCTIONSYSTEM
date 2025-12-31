@@ -6,7 +6,10 @@ import {
     Clock, Crown, Layers, Wallet, ChevronRight
 } from 'lucide-react';
 
-// --- UPDATED CATEGORIES ---
+// --- CONFIGURATION ---
+// Changed from localhost to your Render Backend URL
+const API_BASE_URL = 'https://spl-auctionsystem-backend.onrender.com';
+
 const CATEGORIES = ['Marquee', 'Set 1', 'Set 2', 'Set 3', 'Set 4'];
 const ROLES = ['Batsman', 'Bowler', 'All Rounder', 'Wicket Keeper'];
 
@@ -31,31 +34,52 @@ export default function SetupDashboard({ data, setView }) {
     // --- ACTIONS ---
     const addTeam = async () => {
         if (!newTeam.name) return;
-        await axios.post('http://localhost:5000/api/teams', newTeam);
-        setNewTeam({ name: '', budget: 1000, color: '#3B82F6' });
+        try {
+            // Updated to use Render URL
+            await axios.post(`${API_BASE_URL}/api/teams`, newTeam);
+            setNewTeam({ name: '', budget: 1000, color: '#3B82F6' });
+            // Ideally trigger a data refresh here
+            window.location.reload();
+        } catch (error) {
+            console.error("Error adding team:", error);
+            alert("Failed to add team. Check console.");
+        }
     };
 
     const deleteTeam = async (e, id) => {
         e.stopPropagation();
-        if (window.confirm('Delete this team?')) await axios.delete(`http://localhost:5000/api/teams/${id}`);
+        if (window.confirm('Delete this team?')) {
+            try {
+                // Updated to use Render URL
+                await axios.delete(`${API_BASE_URL}/api/teams/${id}`);
+                window.location.reload();
+            } catch (error) {
+                console.error("Error deleting team:", error);
+            }
+        }
     };
 
     const addPlayer = async () => {
         if (!newPlayer.name) return;
-        await axios.post('http://localhost:5000/api/players', newPlayer);
-        setNewPlayer({ ...newPlayer, name: '', basePrice: 20 });
+        try {
+            // Updated to use Render URL
+            await axios.post(`${API_BASE_URL}/api/players`, newPlayer);
+            setNewPlayer({ ...newPlayer, name: '', basePrice: 20 });
+            window.location.reload();
+        } catch (error) {
+            console.error("Error adding player:", error);
+            alert("Failed to add player. Check console.");
+        }
     };
-
-    // Add 'refreshData' to props if you have a fetch function in parent, 
-    // OR just use window.location.reload() for a quick fix.
 
     const deletePlayer = async (id) => {
         if (window.confirm('Are you sure you want to delete this player?')) {
             try {
-                await axios.delete(`http://localhost:5000/api/players/${id}`);
-                // Quick fix to refresh UI and show updated team counts
+                // Updated to use Render URL
+                await axios.delete(`${API_BASE_URL}/api/players/${id}`);
                 window.location.reload();
             } catch (error) {
+                console.error("Error deleting player:", error);
                 alert("Error deleting player");
             }
         }

@@ -1,22 +1,55 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
     ArrowLeft, Clock, AlertCircle, CheckCircle, Play,
     Gavel, User, Menu, X, Plus, Minus, Trophy, RefreshCcw,
-    Users, Wallet, PieChart
+    Users, Wallet, Shuffle
 } from 'lucide-react';
 
+// --- CONFIGURATION ---
+const CATEGORY_ORDER = ['Marquee', 'Set 1', 'Set 2', 'Set 3', 'Set 4'];
+
 export default function AuctioneerControls({ data, socket, liveState, setView }) {
-    const [increment, setIncrement] = useState(5);
-    const [sidebarTab, setSidebarTab] = useState('queue'); // 'queue', 'unsold', 'sold', 'teams'
+    const [increment, setIncrement] = useState(10);
+    const [sidebarTab, setSidebarTab] = useState('queue');
     const [isSidebarOpen, setIsSidebarOpen] = useState(false);
 
     // --- SAFETY CHECKS ---
     if (!data || !liveState) return <div className="h-screen flex items-center justify-center text-slate-500 font-bold animate-pulse">Loading Console...</div>;
 
+    // --- AUTO-INCREMENT LOGIC ---
+    useEffect(() => {
+        if (!liveState) return;
+
+        const bid = liveState.currentBid;
+        let newIncrement = 10; // Default (0-99)
+
+        if (bid >= 1000) {
+            newIncrement = 100;
+        } else if (bid >= 500) {
+            newIncrement = 50;
+        } else if (bid >= 300) {
+            newIncrement = 20;
+        } else if (bid >= 100) {
+            newIncrement = 10;
+        } else {
+            newIncrement = 10;
+        }
+
+        setIncrement(newIncrement);
+    }, [liveState.currentBid]); // Runs whenever bid updates
+
     // --- DERIVED LISTS ---
     const queuePlayers = data.players.filter(p => !p.isSold && !p.isUnsold);
     const unsoldPlayers = data.players.filter(p => p.isUnsold);
     const soldPlayers = data.players.filter(p => p.isSold);
+
+    // Group Queue Players by Category
+    const groupedQueue = queuePlayers.reduce((acc, player) => {
+        const cat = player.category || 'Uncategorized';
+        if (!acc[cat]) acc[cat] = [];
+        acc[cat].push(player);
+        return acc;
+    }, {});
 
     const currentPlayer = liveState.currentPlayerId
         ? data.players.find(p => p._id === liveState.currentPlayerId)
@@ -26,6 +59,15 @@ export default function AuctioneerControls({ data, socket, liveState, setView })
     const startPlayer = (player) => {
         socket.emit('start_player', { playerId: player._id, basePrice: player.basePrice });
         setIsSidebarOpen(false);
+    };
+
+    const pickRandomPlayer = (category) => {
+        const playersInSet = groupedQueue[category];
+        if (!playersInSet || playersInSet.length === 0) return;
+
+        const randomIndex = Math.floor(Math.random() * playersInSet.length);
+        const randomPlayer = playersInSet[randomIndex];
+        startPlayer(randomPlayer);
     };
 
     const resetRound = () => {
@@ -61,7 +103,7 @@ export default function AuctioneerControls({ data, socket, liveState, setView })
                 </button>
             </div>
 
-            {/* 1. SIDEBAR (With New TEAMS Tab) */}
+            {/* 1. SIDEBAR */}
             <div className={`
         fixed inset-y-0 left-0 z-40 w-96 bg-white border-r border-slate-200 flex flex-col shadow-2xl transition-transform duration-300 ease-out
         md:relative md:translate-x-0 
@@ -89,8 +131,8 @@ export default function AuctioneerControls({ data, socket, liveState, setView })
                             key={tab.id}
                             onClick={() => setSidebarTab(tab.id)}
                             className={`flex flex-col items-center justify-center py-2 rounded-md transition-all ${sidebarTab === tab.id
-                                    ? 'bg-slate-100 text-blue-600 shadow-sm'
-                                    : 'text-slate-400 hover:bg-slate-50'
+                                ? 'bg-slate-100 text-blue-600 shadow-sm'
+                                : 'text-slate-400 hover:bg-slate-50'
                                 }`}
                         >
                             <tab.icon className="w-4 h-4 mb-0.5" />
@@ -100,19 +142,50 @@ export default function AuctioneerControls({ data, socket, liveState, setView })
                 </div>
 
                 {/* Sidebar Content Area */}
-                <div className="flex-1 overflow-y-auto p-3 bg-slate-50/30 space-y-2">
+                <div className="flex-1 overflow-y-auto p-3 bg-slate-50/30 space-y-4">
 
-                    {/* VIEW: PLAYERS (Queue) */}
-                    {sidebarTab === 'queue' && queuePlayers.map(p => (
-                        <div key={p._id} onClick={() => startPlayer(p)} className="group p-3 bg-white border border-slate-200 rounded-xl cursor-pointer hover:border-blue-500 hover:shadow-md transition-all relative overflow-hidden active:scale-[0.98]">
-                            <div className="absolute left-0 top-0 bottom-0 w-1 bg-blue-500 opacity-0 group-hover:opacity-100 transition-opacity"></div>
-                            <div className="font-bold text-slate-700 text-sm">{p.name}</div>
-                            <div className="flex justify-between mt-1 text-[10px] font-medium text-slate-500">
-                                <span className="bg-slate-100 px-2 py-0.5 rounded">{p.role}</span>
-                                <span className="font-mono text-slate-400">Base: ₹{p.basePrice}L</span>
-                            </div>
-                        </div>
-                    ))}
+                    {/* VIEW: PLAYERS (Queue) - GROUPED BY CATEGORY */}
+                    {sidebarTab === 'queue' && (
+                        <>
+                            {queuePlayers.length === 0 && <div className="p-8 text-center text-slate-400 text-xs italic">Queue Empty</div>}
+
+                            {CATEGORY_ORDER.map(category => {
+                                const players = groupedQueue[category];
+                                if (!players || players.length === 0) return null;
+
+                                return (
+                                    <div key={category} className="flex gap-2 animate-in slide-in-from-left-2 duration-300">
+
+                                        {/* Vertical Random Button */}
+                                        <button
+                                            onClick={() => pickRandomPlayer(category)}
+                                            className="w-8 shrink-0 bg-slate-800 hover:bg-slate-700 text-white rounded-lg flex flex-col items-center justify-center gap-2 shadow-md transition-colors active:scale-95"
+                                            title={`Pick Random from ${category}`}
+                                        >
+                                            <Shuffle className="w-4 h-4" />
+                                            <span className="text-[10px] font-bold uppercase tracking-widest [writing-mode:vertical-rl] rotate-180 whitespace-nowrap py-2">
+                                                {category} ({players.length})
+                                            </span>
+                                        </button>
+
+                                        {/* List of Players in this Category */}
+                                        <div className="flex-1 space-y-2">
+                                            {players.map(p => (
+                                                <div key={p._id} onClick={() => startPlayer(p)} className="group p-3 bg-white border border-slate-200 rounded-xl cursor-pointer hover:border-blue-500 hover:shadow-md transition-all relative overflow-hidden active:scale-[0.98]">
+                                                    <div className="absolute left-0 top-0 bottom-0 w-1 bg-blue-500 opacity-0 group-hover:opacity-100 transition-opacity"></div>
+                                                    <div className="font-bold text-slate-700 text-sm">{p.name}</div>
+                                                    <div className="flex justify-between mt-1 text-[10px] font-medium text-slate-500">
+                                                        <span className="bg-slate-100 px-2 py-0.5 rounded">{p.role}</span>
+                                                        <span className="font-mono text-slate-400">₹{p.basePrice}L</span>
+                                                    </div>
+                                                </div>
+                                            ))}
+                                        </div>
+                                    </div>
+                                );
+                            })}
+                        </>
+                    )}
 
                     {/* VIEW: UNSOLD */}
                     {sidebarTab === 'unsold' && unsoldPlayers.map(p => (
@@ -133,7 +206,7 @@ export default function AuctioneerControls({ data, socket, liveState, setView })
                         </div>
                     ))}
 
-                    {/* VIEW: TEAMS DETAIL (New Request) */}
+                    {/* VIEW: TEAMS DETAIL */}
                     {sidebarTab === 'teams' && data.teams.map(team => {
                         const percentUsed = (team.spent / team.budget) * 100;
                         return (
@@ -148,7 +221,6 @@ export default function AuctioneerControls({ data, socket, liveState, setView })
                                         <span>Used: ₹{team.spent}L</span>
                                         <span>Total: ₹{team.budget}L</span>
                                     </div>
-                                    {/* Progress Bar */}
                                     <div className="h-1.5 w-full bg-slate-100 rounded-full overflow-hidden">
                                         <div
                                             className="h-full rounded-full transition-all duration-500"
@@ -162,8 +234,6 @@ export default function AuctioneerControls({ data, socket, liveState, setView })
                             </div>
                         )
                     })}
-
-                    {sidebarTab === 'queue' && queuePlayers.length === 0 && <div className="p-8 text-center text-slate-400 text-xs italic">Queue Empty</div>}
                 </div>
             </div>
 
@@ -177,7 +247,7 @@ export default function AuctioneerControls({ data, socket, liveState, setView })
                             <Clock className="w-8 h-8 text-slate-300" />
                         </div>
                         <h2 className="text-xl md:text-2xl font-bold text-slate-600">Ready</h2>
-                        <p className="text-slate-400 text-sm mt-2">Select a player from the sidebar.</p>
+                        <p className="text-slate-400 text-sm mt-2">Pick a player or use the randomizer button.</p>
                     </div>
                 )}
 
@@ -206,7 +276,7 @@ export default function AuctioneerControls({ data, socket, liveState, setView })
                             <div className="flex items-center justify-between gap-4 bg-slate-50 px-5 py-2 rounded-xl border border-slate-100 w-full md:w-auto shadow-inner">
                                 <div>
                                     <div className="text-[9px] uppercase font-bold text-slate-400 tracking-wider">Current Bid</div>
-                                    <div className="text-3xl font-mono font-black text-blue-600 tracking-tighter">₹{liveState.currentBid}</div>
+                                    <div className="text-3xl font-mono font-black text-blue-600 tracking-tighter">₹{liveState.currentBid}L</div>
                                 </div>
                                 {liveState.leadingTeamId && (
                                     <div className="text-right border-l pl-4 border-slate-200">
@@ -236,9 +306,6 @@ export default function AuctioneerControls({ data, socket, liveState, setView })
 
                             {/* Grid Wrapper */}
                             <div className="flex-1 overflow-y-auto flex flex-col justify-center w-full px-2">
-
-                                {/* --- 5 SQUARE ICON GRID --- */}
-                                {/* Adding p-2 padding to container ensures scale hover doesn't clip */}
                                 <div className="grid grid-cols-2 md:grid-cols-3 xl:grid-cols-5 gap-3 md:gap-4 w-full max-w-6xl mx-auto align-middle p-2">
                                     {data.teams.map(team => {
                                         const nextBidAmount = liveState.leadingTeamId === null ? currentPlayer.basePrice : liveState.currentBid + increment;
@@ -251,7 +318,6 @@ export default function AuctioneerControls({ data, socket, liveState, setView })
                                                 key={team._id}
                                                 onClick={() => placeBid(team._id)}
                                                 disabled={!canAfford}
-                                                // aspect-square FORCES it to be a perfect square
                                                 className={`
                           aspect-square
                           relative flex flex-col justify-center items-center text-center p-3 rounded-2xl transition-all duration-200 ease-out
@@ -264,20 +330,17 @@ export default function AuctioneerControls({ data, socket, liveState, setView })
                                                     backgroundImage: 'linear-gradient(135deg, rgba(255,255,255,0.15) 0%, rgba(0,0,0,0.05) 100%)'
                                                 }}
                                             >
-                                                {/* Team Name */}
                                                 <div className="font-black text-sm md:text-xl text-white leading-tight drop-shadow-md w-full break-words mb-3 px-1">
                                                     {team.name}
                                                 </div>
 
-                                                {/* Bid Button Look */}
                                                 <div className={`
                           w-full max-w-[80%] py-1.5 rounded-lg font-mono font-bold text-xs md:text-lg shadow-lg border-b-2 transition-colors
                           ${isLeader ? 'bg-yellow-300 text-yellow-900 border-yellow-500 animate-pulse' : 'bg-white/95 text-slate-900 border-white/50'}
                         `}>
-                                                    {isLeader ? 'HOLDING' : `₹${nextBidAmount}`}
+                                                    {isLeader ? 'HOLDING' : `₹${nextBidAmount}L`}
                                                 </div>
 
-                                                {/* Balance */}
                                                 <div className="absolute bottom-3 text-[9px] md:text-[10px] font-bold text-white/90 bg-black/20 px-2 py-0.5 rounded-full backdrop-blur-sm flex items-center gap-1">
                                                     <Wallet className="w-3 h-3" /> ₹{remaining}L
                                                 </div>
@@ -287,7 +350,7 @@ export default function AuctioneerControls({ data, socket, liveState, setView })
                                 </div>
                             </div>
 
-                            {/* Footer Actions (Fixed) */}
+                            {/* Footer Actions */}
                             <div className="grid grid-cols-2 gap-3 mt-3 pt-3 border-t border-slate-100 shrink-0 z-10 bg-white">
                                 <button
                                     onClick={() => socket.emit('sell_player')}
@@ -311,12 +374,11 @@ export default function AuctioneerControls({ data, socket, liveState, setView })
                     </div>
                 )}
 
-                {/* --- 3. RESULT OVERLAY (Absolute Center) --- */}
+                {/* --- 3. RESULT OVERLAY --- */}
                 {(liveState.status === 'SOLD' || liveState.status === 'UNSOLD') && currentPlayer && (
                     <div className="absolute inset-0 z-50 flex items-center justify-center bg-slate-900/60 backdrop-blur-sm p-4 animate-in fade-in duration-200">
                         <div className="bg-white rounded-3xl shadow-2xl p-6 md:p-8 text-center border border-slate-200 max-w-sm w-full animate-in zoom-in-95 duration-300 relative overflow-hidden">
 
-                            {/* Result Header */}
                             {liveState.status === 'SOLD' ? (
                                 <>
                                     <div className="mx-auto bg-green-100 w-16 h-16 rounded-full flex items-center justify-center mb-4 shadow-inner">

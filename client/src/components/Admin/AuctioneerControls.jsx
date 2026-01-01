@@ -13,6 +13,9 @@ export default function AuctioneerControls({ data, socket, liveState, setView })
     const [sidebarTab, setSidebarTab] = useState('queue');
     const [isSidebarOpen, setIsSidebarOpen] = useState(false);
 
+    // NEW: Prevents rapid-fire clicks
+    const [isPending, setIsPending] = useState(false);
+
     // --- SAFETY CHECKS ---
     if (!data || !liveState) return <div className="h-screen flex items-center justify-center text-slate-500 font-bold animate-pulse">Loading Console...</div>;
 
@@ -20,8 +23,11 @@ export default function AuctioneerControls({ data, socket, liveState, setView })
     useEffect(() => {
         if (!liveState) return;
 
+        // Unlock buttons whenever the bid updates from the server
+        setIsPending(false);
+
         const bid = liveState.currentBid;
-        let newIncrement = 10; // Default (0-99)
+        let newIncrement = 10;
 
         if (bid >= 1000) {
             newIncrement = 100;
@@ -36,14 +42,14 @@ export default function AuctioneerControls({ data, socket, liveState, setView })
         }
 
         setIncrement(newIncrement);
-    }, [liveState.currentBid]); // Runs whenever bid updates
+    }, [liveState.currentBid]);
 
     // --- DERIVED LISTS ---
     const queuePlayers = data.players.filter(p => !p.isSold && !p.isUnsold);
     const unsoldPlayers = data.players.filter(p => p.isUnsold);
     const soldPlayers = data.players.filter(p => p.isSold);
 
-    // Group Queue Players by Category
+    // Group Queue Players
     const groupedQueue = queuePlayers.reduce((acc, player) => {
         const cat = player.category || 'Uncategorized';
         if (!acc[cat]) acc[cat] = [];
@@ -64,10 +70,8 @@ export default function AuctioneerControls({ data, socket, liveState, setView })
     const pickRandomPlayer = (category) => {
         const playersInSet = groupedQueue[category];
         if (!playersInSet || playersInSet.length === 0) return;
-
         const randomIndex = Math.floor(Math.random() * playersInSet.length);
-        const randomPlayer = playersInSet[randomIndex];
-        startPlayer(randomPlayer);
+        startPlayer(playersInSet[randomIndex]);
     };
 
     const resetRound = () => {
@@ -75,8 +79,14 @@ export default function AuctioneerControls({ data, socket, liveState, setView })
     };
 
     const placeBid = (teamId) => {
+        // 1. STOP if already processing a click
+        if (isPending) return;
+
         const team = data.teams.find(t => t._id === teamId);
         if (!team) return;
+
+        // 2. STOP if this team is already the leader (Prevent Self-Bid)
+        if (liveState.leadingTeamId === teamId) return;
 
         const nextBid = liveState.leadingTeamId === null
             ? (currentPlayer?.basePrice || 0)
@@ -86,7 +96,14 @@ export default function AuctioneerControls({ data, socket, liveState, setView })
             alert(`Insufficient funds! ${team.name} has only ₹${team.budget - team.spent}L left.`);
             return;
         }
+
+        // 3. LOCK buttons immediately
+        setIsPending(true);
+
         socket.emit('place_bid', { teamId, amount: nextBid });
+
+        // Safety: Unlock after 1 second even if server lags, to prevent freezing
+        setTimeout(() => setIsPending(false), 1000);
     };
 
     // --- RENDER ---
@@ -144,7 +161,7 @@ export default function AuctioneerControls({ data, socket, liveState, setView })
                 {/* Sidebar Content Area */}
                 <div className="flex-1 overflow-y-auto p-3 bg-slate-50/30 space-y-4">
 
-                    {/* VIEW: PLAYERS (Queue) - GROUPED BY CATEGORY */}
+                    {/* VIEW: PLAYERS (Queue) */}
                     {sidebarTab === 'queue' && (
                         <>
                             {queuePlayers.length === 0 && <div className="p-8 text-center text-slate-400 text-xs italic">Queue Empty</div>}
@@ -155,8 +172,6 @@ export default function AuctioneerControls({ data, socket, liveState, setView })
 
                                 return (
                                     <div key={category} className="flex gap-2 animate-in slide-in-from-left-2 duration-300">
-
-                                        {/* Vertical Random Button */}
                                         <button
                                             onClick={() => pickRandomPlayer(category)}
                                             className="w-8 shrink-0 bg-slate-800 hover:bg-slate-700 text-white rounded-lg flex flex-col items-center justify-center gap-2 shadow-md transition-colors active:scale-95"
@@ -168,7 +183,6 @@ export default function AuctioneerControls({ data, socket, liveState, setView })
                                             </span>
                                         </button>
 
-                                        {/* List of Players in this Category */}
                                         <div className="flex-1 space-y-2">
                                             {players.map(p => (
                                                 <div key={p._id} onClick={() => startPlayer(p)} className="group p-3 bg-white border border-slate-200 rounded-xl cursor-pointer hover:border-blue-500 hover:shadow-md transition-all relative overflow-hidden active:scale-[0.98]">
@@ -317,12 +331,18 @@ export default function AuctioneerControls({ data, socket, liveState, setView })
                                             <button
                                                 key={team._id}
                                                 onClick={() => placeBid(team._id)}
-                                                disabled={!canAfford}
+                                                // DISABLED IF: 
+                                                // 1. Cannot afford
+                                                // 2. Already leading (Prevent Holding click)
+                                                // 3. System is pending previous click (Prevent Double click)
+                                                disabled={!canAfford || isLeader || isPending}
                                                 className={`
                           aspect-square
                           relative flex flex-col justify-center items-center text-center p-3 rounded-2xl transition-all duration-200 ease-out
                           border border-white/20 shadow-md
-                          ${canAfford ? 'active:scale-95 cursor-pointer hover:shadow-xl hover:scale-105 hover:z-20' : 'opacity-50 grayscale cursor-not-allowed'}
+                          ${(canAfford && !isLeader && !isPending)
+                                                        ? 'active:scale-95 cursor-pointer hover:shadow-xl hover:scale-105 hover:z-20'
+                                                        : 'opacity-50 grayscale cursor-not-allowed'}
                           ${isLeader ? 'ring-4 ring-offset-2 ring-yellow-400 z-10 scale-[1.05] shadow-2xl' : ''}
                         `}
                                                 style={{

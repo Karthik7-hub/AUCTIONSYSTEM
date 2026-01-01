@@ -8,12 +8,13 @@ import ViewerScreen from './components/Viewer/ViewerScreen';
 
 const SOCKET_URL = 'https://spl-auctionsystem-backend.onrender.com';
 const socket = io(SOCKET_URL, {
-    transports: ['websocket'], // Force websocket for better performance
+    transports: ['websocket'],
     reconnection: true,
 });
 
 function App() {
-    const [view, setView] = useState('login');
+    // 1. CHANGE DEFAULT VIEW TO 'viewer'
+    const [view, setView] = useState('viewer');
     const [data, setData] = useState({ teams: [], players: [] });
     const [liveState, setLiveState] = useState({
         currentBid: 0,
@@ -22,11 +23,9 @@ function App() {
         status: 'IDLE'
     });
 
-    // Fetch fresh data from backend
     const fetchData = async () => {
         try {
             const res = await axios.get(`${SOCKET_URL}/api/init`);
-            // Ensure we always have arrays
             setData({
                 teams: res.data.teams || [],
                 players: res.data.players || []
@@ -37,15 +36,11 @@ function App() {
     };
 
     useEffect(() => {
-        // 1. Initial Load
         fetchData();
-
-        // 2. Socket Listeners
         const handleDataUpdate = () => {
             console.log("Data update received, refetching...");
             fetchData();
         };
-
         const handleAuctionState = (state) => {
             setLiveState(state);
         };
@@ -53,7 +48,6 @@ function App() {
         socket.on('data_update', handleDataUpdate);
         socket.on('auction_state', handleAuctionState);
 
-        // 3. Cleanup to prevent duplicate listeners (The Glitch Fix)
         return () => {
             socket.off('data_update', handleDataUpdate);
             socket.off('auction_state', handleAuctionState);
@@ -69,8 +63,9 @@ function App() {
     if (view === 'admin-live')
         return <AuctioneerControls data={data} socket={socket} liveState={liveState} setView={setView} />;
 
+    // 2. PASS setView PROP TO VIEWER SCREEN
     if (view === 'viewer')
-        return <ViewerScreen data={data} liveState={liveState} />;
+        return <ViewerScreen data={data} liveState={liveState} setView={setView} />;
 
     return <div className="p-10 text-center">Loading Application...</div>;
 }

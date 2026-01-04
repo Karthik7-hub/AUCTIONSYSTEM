@@ -1,90 +1,173 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import axios from 'axios';
-import { Trophy, ArrowRight, ShieldCheck, Lock } from 'lucide-react';
+import { Trophy, ArrowRight, Calendar, Users, Shield, Zap, Archive, History } from 'lucide-react';
 
 const API_URL = 'https://spl-auctionsystem-backend.onrender.com';
 
 export default function LandingPage() {
     const navigate = useNavigate();
     const [auctions, setAuctions] = useState([]);
-    const [showCreate, setShowCreate] = useState(false);
-    const [masterPassword, setMasterPassword] = useState('');
+    const [loading, setLoading] = useState(true);
 
-    // Updated State with Defaults
-    const [newAuction, setNewAuction] = useState({
-        name: '',
-        accessCode: '',
-        categories: 'Marquee, Set 1, Set 2, Set 3, Set 4',
-        roles: 'Batsman, Bowler, All Rounder, Wicket Keeper'
-    });
+    // UI State for Tabs
+    const [activeTab, setActiveTab] = useState('active'); // 'active' or 'completed'
 
     useEffect(() => {
-        axios.get(`${API_URL}/api/auctions`).then(res => setAuctions(res.data));
+        axios.get(`${API_URL}/api/auctions`)
+            .then(res => {
+                // Store ALL auctions, we will filter them in the render
+                setAuctions(res.data);
+                setLoading(false);
+            })
+            .catch(err => {
+                console.error(err);
+                setLoading(false);
+            });
     }, []);
 
-    const handleCreate = async () => {
-        if (masterPassword !== 'superadmin123') return alert("Invalid Master Password");
-        if (!newAuction.name || !newAuction.accessCode) return;
-
-        // Process comma-separated strings into Arrays
-        const payload = {
-            ...newAuction,
-            categories: newAuction.categories.split(',').map(s => s.trim()).filter(s => s),
-            roles: newAuction.roles.split(',').map(s => s.trim()).filter(s => s)
-        };
-
-        try {
-            await axios.post(`${API_URL}/api/create-auction`, payload);
-            window.location.reload();
-        } catch (error) {
-            alert("Error creating auction");
-            console.error(error);
-        }
-    };
+    // Filter Logic
+    const filteredAuctions = auctions.filter(auction => {
+        if (activeTab === 'active') return auction.isActive;
+        if (activeTab === 'completed') return !auction.isActive;
+        return true;
+    });
 
     return (
-        <div className="min-h-screen bg-slate-900 text-white font-sans p-6 md:p-12">
-            <div className="max-w-6xl mx-auto">
-                <div className="flex justify-between items-center mb-12">
-                    <h1 className="text-3xl font-black flex items-center gap-4">
-                        <Trophy className="text-blue-500" /> Tournament Hub
-                    </h1>
-                    <button onClick={() => setShowCreate(!showCreate)} className="p-3 bg-slate-800 rounded-full border border-slate-700">
-                        {showCreate ? <ShieldCheck className="w-5 h-5 text-green-400" /> : <Lock className="w-5 h-5 text-slate-500" />}
-                    </button>
+        <div className="min-h-screen bg-slate-950 text-white font-sans flex flex-col relative overflow-hidden">
+
+            {/* Background Decoration */}
+            <div className="absolute top-0 left-0 w-full h-full overflow-hidden pointer-events-none">
+                <div className="absolute top-[-10%] right-[-5%] w-96 h-96 bg-blue-600/20 rounded-full blur-3xl"></div>
+                <div className="absolute bottom-[-10%] left-[-5%] w-96 h-96 bg-purple-600/20 rounded-full blur-3xl"></div>
+            </div>
+
+            {/* Main Content */}
+            <div className="flex-1 w-full max-w-6xl mx-auto p-6 md:p-12 relative z-10">
+
+                {/* Header */}
+                <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-12 gap-6">
+                    <div className="flex items-center gap-4">
+                        <div className="bg-gradient-to-br from-blue-600 to-indigo-600 p-4 rounded-2xl shadow-xl shadow-blue-500/20">
+                            <Trophy className="w-10 h-10 text-white" />
+                        </div>
+                        <div>
+                            <h1 className="text-4xl font-black tracking-tight text-white">Tournament Hub</h1>
+                            <p className="text-slate-400 font-medium mt-1">Select an arena to enter</p>
+                        </div>
+                    </div>
+
+                    {/* Tab Navigation */}
+                    <div className="bg-slate-900 p-1.5 rounded-xl flex shadow-lg border border-slate-800">
+                        <button
+                            onClick={() => setActiveTab('active')}
+                            className={`px-6 py-2.5 rounded-lg font-bold text-sm flex items-center gap-2 transition-all ${activeTab === 'active' ? 'bg-blue-600 text-white shadow-md' : 'text-slate-500 hover:text-slate-300'}`}
+                        >
+                            <Zap className={`w-4 h-4 ${activeTab === 'active' ? 'fill-current' : ''}`} />
+                            Live Events
+                        </button>
+                        <button
+                            onClick={() => setActiveTab('completed')}
+                            className={`px-6 py-2.5 rounded-lg font-bold text-sm flex items-center gap-2 transition-all ${activeTab === 'completed' ? 'bg-slate-800 text-white shadow-md' : 'text-slate-500 hover:text-slate-300'}`}
+                        >
+                            <History className="w-4 h-4" />
+                            Past Results
+                        </button>
+                    </div>
                 </div>
 
-                {showCreate && (
-                    <div className="bg-slate-800/50 p-6 rounded-3xl mb-12 border border-slate-700 grid md:grid-cols-2 gap-4">
-                        <input type="password" placeholder="Master Password" className="bg-slate-900 border border-slate-700 p-3 rounded-xl col-span-2" value={masterPassword} onChange={e => setMasterPassword(e.target.value)} />
+                {/* Auction Grid */}
+                {loading ? (
+                    <div className="flex justify-center items-center h-64 text-slate-500 animate-pulse font-bold">
+                        Loading Tournaments...
+                    </div>
+                ) : (
+                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                        {filteredAuctions.map(auction => (
+                            <div
+                                key={auction._id}
+                                onClick={() => navigate(`/auction/${auction._id}`)}
+                                className={`group border rounded-3xl p-6 cursor-pointer transition-all hover:scale-[1.02] hover:shadow-2xl relative overflow-hidden flex flex-col h-full
+                                    ${auction.isActive
+                                        ? 'bg-slate-900 border-slate-800 hover:border-blue-500/50 hover:shadow-blue-900/20'
+                                        : 'bg-slate-950 border-slate-900 hover:border-slate-800 opacity-75 hover:opacity-100'
+                                    }`}
+                            >
+                                {/* Card Hover Gradient */}
+                                <div className={`absolute inset-0 bg-gradient-to-br opacity-0 group-hover:opacity-100 transition-opacity ${auction.isActive ? 'from-blue-600/5 to-transparent' : 'from-slate-700/10 to-transparent'}`}></div>
 
-                        <input placeholder="Tournament Name" className="bg-slate-900 border border-slate-700 p-3 rounded-xl" value={newAuction.name} onChange={e => setNewAuction({ ...newAuction, name: e.target.value })} />
-                        <input placeholder="Host Password" className="bg-slate-900 border border-slate-700 p-3 rounded-xl" value={newAuction.accessCode} onChange={e => setNewAuction({ ...newAuction, accessCode: e.target.value })} />
+                                <div className="relative z-10 flex-1 flex flex-col">
+                                    <div className="flex justify-between items-start mb-4">
+                                        <div className={`p-3 rounded-xl ${auction.isActive ? 'bg-slate-800' : 'bg-slate-900'}`}>
+                                            {auction.isActive
+                                                ? <Trophy className="w-6 h-6 text-yellow-500" />
+                                                : <Archive className="w-6 h-6 text-slate-600" />
+                                            }
+                                        </div>
+                                        {auction.isActive ? (
+                                            <span className="bg-green-500/10 text-green-400 text-xs font-bold px-3 py-1 rounded-full border border-green-500/20 animate-pulse">
+                                                LIVE NOW
+                                            </span>
+                                        ) : (
+                                            <span className="bg-slate-800 text-slate-500 text-xs font-bold px-3 py-1 rounded-full border border-slate-700">
+                                                COMPLETED
+                                            </span>
+                                        )}
+                                    </div>
 
-                        <div className="col-span-2">
-                            <label className="text-xs text-slate-400 font-bold uppercase ml-1">Categories (Comma separated)</label>
-                            <textarea className="w-full bg-slate-900 border border-slate-700 p-3 rounded-xl mt-1 h-20" value={newAuction.categories} onChange={e => setNewAuction({ ...newAuction, categories: e.target.value })} />
-                        </div>
+                                    <h3 className={`text-2xl font-bold mb-2 transition-colors ${auction.isActive ? 'text-white group-hover:text-blue-400' : 'text-slate-400 group-hover:text-slate-200'}`}>
+                                        {auction.name}
+                                    </h3>
 
-                        <div className="col-span-2">
-                            <label className="text-xs text-slate-400 font-bold uppercase ml-1">Roles (Comma separated)</label>
-                            <textarea className="w-full bg-slate-900 border border-slate-700 p-3 rounded-xl mt-1 h-20" value={newAuction.roles} onChange={e => setNewAuction({ ...newAuction, roles: e.target.value })} />
-                        </div>
+                                    <div className="space-y-3 mb-6 flex-1">
+                                        <div className="flex items-center text-slate-500 text-sm">
+                                            <Calendar className="w-4 h-4 mr-2" />
+                                            {new Date(auction.date).toLocaleDateString(undefined, { dateStyle: 'long' })}
+                                        </div>
+                                        <div className="flex items-center text-slate-500 text-sm">
+                                            <Users className="w-4 h-4 mr-2" />
+                                            {auction.isActive ? "Spectator Access Open" : "View Results & Stats"}
+                                        </div>
+                                    </div>
 
-                        <button onClick={handleCreate} className="md:col-span-2 bg-blue-600 py-3 rounded-xl font-bold mt-2 hover:bg-blue-700">Create Tournament</button>
+                                    <div className={`flex items-center font-bold text-sm group-hover:translate-x-2 transition-transform ${auction.isActive ? 'text-blue-400' : 'text-slate-500'}`}>
+                                        {auction.isActive ? "Enter Arena" : "View Archive"} <ArrowRight className="w-4 h-4 ml-2" />
+                                    </div>
+                                </div>
+                            </div>
+                        ))}
+
+                        {filteredAuctions.length === 0 && (
+                            <div className="col-span-full py-24 text-center border-2 border-dashed border-slate-800 rounded-3xl bg-slate-900/30">
+                                <div className="bg-slate-900 w-16 h-16 rounded-full flex items-center justify-center mx-auto mb-4">
+                                    {activeTab === 'active' ? <Trophy className="w-8 h-8 text-slate-700" /> : <History className="w-8 h-8 text-slate-700" />}
+                                </div>
+                                <h3 className="text-xl font-bold text-slate-500">
+                                    {activeTab === 'active' ? "No Live Tournaments" : "No Past Tournaments Found"}
+                                </h3>
+                                <p className="text-slate-600 mt-2 text-sm">
+                                    {activeTab === 'active' ? "Check back later for upcoming events." : "History will appear here once events conclude."}
+                                </p>
+                            </div>
+                        )}
                     </div>
                 )}
+            </div>
 
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                    {auctions.map(auction => (
-                        <div key={auction._id} onClick={() => navigate(`/auction/${auction._id}`)} className="bg-slate-800 p-6 rounded-3xl border border-slate-700 cursor-pointer hover:border-blue-500 transition-all">
-                            <h3 className="text-xl font-bold">{auction.name}</h3>
-                            <div className="text-slate-400 text-sm mt-2 flex items-center gap-2">Enter Arena <ArrowRight className="w-4 h-4" /></div>
-                        </div>
-                    ))}
+            {/* Footer */}
+            <div className="w-full border-t border-slate-900/50 bg-slate-950/80 backdrop-blur-md p-6 relative z-10 mt-auto">
+                <div className="max-w-6xl mx-auto flex flex-col md:flex-row justify-between items-center gap-4 text-xs text-slate-600">
+                    <p>© 2026 SPL Auction Platform. All rights reserved.</p>
+                    <button
+                        onClick={() => navigate('/super-admin')}
+                        className="flex items-center gap-2 hover:text-slate-400 transition-colors group"
+                    >
+                        <Shield className="w-3 h-3 group-hover:text-blue-500 transition-colors" />
+                        <span className="font-bold">Authorized Access Only</span>
+                    </button>
                 </div>
             </div>
+
         </div>
     );
 }

@@ -73,24 +73,17 @@ export default function ViewerScreen({ data, liveState, setView, config }) {
         return ['All', ...cats];
     }, [safePlayers, config]);
 
-    // UPDATED: More Robust Squad Getter
     const getCleanSquad = (team) => {
         if (!team || !team.players) return [];
         const uniqueMap = new Map();
 
         team.players.forEach(entry => {
             let player = null;
-
-            // Case 1: Populated Object (The API sent the full player data)
             if (entry && typeof entry === 'object' && entry._id) {
                 player = entry;
-            }
-            // Case 2: ID String (We need to find it in the master list)
-            else if (typeof entry === 'string') {
+            } else if (typeof entry === 'string') {
                 player = safePlayers.find(p => p._id === entry);
             }
-
-            // Only add if we found a valid player
             if (player && player._id) {
                 uniqueMap.set(player._id, player);
             }
@@ -109,7 +102,7 @@ export default function ViewerScreen({ data, liveState, setView, config }) {
     return (
         <div className="min-h-screen bg-slate-950 text-slate-100 font-sans flex flex-col relative pb-24 md:pb-0">
 
-            {/* HEADER */}
+            {/* DESKTOP HEADER */}
             <div className="hidden md:block bg-slate-900/80 backdrop-blur-xl border-b border-slate-800 sticky top-0 z-50">
                 <div className="max-w-7xl mx-auto flex justify-between items-center px-6 h-16">
                     <div className="flex gap-8 h-full">
@@ -131,24 +124,27 @@ export default function ViewerScreen({ data, liveState, setView, config }) {
                     {/* LIVE TAB */}
                     {activeTab === 'live' && <LiveAuctionView data={data} liveState={liveState} />}
 
-                    {/* TEAMS TAB - FIXED SQUAD LIST */}
+                    {/* TEAMS TAB */}
                     {activeTab === 'teams' && (
                         <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
                             {safeTeams.map((team) => {
                                 const cleanSquad = getCleanSquad(team);
+                                // DYNAMIC SPENT CALCULATION
+                                const realSpent = cleanSquad.reduce((total, p) => total + (p.soldPrice || 0), 0);
+                                const realRemaining = team.budget - realSpent;
+
                                 return (
-                                    <div key={team._id} className="bg-slate-900 rounded-2xl overflow-hidden border border-slate-800 shadow-xl flex flex-col h-[500px]"> {/* Fixed Height */}
+                                    <div key={team._id} className="bg-slate-900 rounded-2xl overflow-hidden border border-slate-800 shadow-xl flex flex-col h-[500px]">
                                         <div className="p-5 relative shrink-0" style={{ backgroundColor: team.color }}>
                                             <h3 className="text-2xl font-black text-white drop-shadow-md relative z-10">{team.name}</h3>
                                             <div className="text-white/80 text-xs font-bold uppercase mt-1 relative z-10">{cleanSquad.length} Players</div>
                                             <Trophy className="absolute -right-4 -top-4 w-24 h-24 text-white opacity-20 rotate-12" />
                                         </div>
                                         <div className="p-3 bg-slate-950/30 border-b border-slate-800 flex justify-between items-center text-sm shrink-0">
-                                            <div className="font-bold text-slate-400">Purse Left: <span className="text-green-400">₹{team.budget - team.spent}L</span></div>
-                                            <div className="font-bold text-slate-400">Spent: <span className="text-red-400">₹{team.spent}L</span></div>
+                                            <div className="font-bold text-slate-400">Purse Left: <span className={realRemaining < 0 ? "text-red-500" : "text-green-400"}>₹{realRemaining}L</span></div>
+                                            <div className="font-bold text-slate-400">Spent: <span className="text-blue-400">₹{realSpent}L</span></div>
                                         </div>
 
-                                        {/* SCROLLABLE SQUAD LIST - Fixed */}
                                         <div className="p-4 flex-1 bg-slate-900 overflow-y-auto [&::-webkit-scrollbar]:w-2 [&::-webkit-scrollbar-thumb]:bg-slate-700 [&::-webkit-scrollbar-track]:bg-transparent">
                                             {cleanSquad.length === 0 ? (
                                                 <div className="h-full flex flex-col items-center justify-center text-slate-600 text-xs border-2 border-dashed border-slate-800 rounded-xl">
@@ -178,7 +174,6 @@ export default function ViewerScreen({ data, liveState, setView, config }) {
                     {/* PLAYERS TAB */}
                     {activeTab === 'players' && (
                         <div className="space-y-6">
-                            {/* Filter Bar */}
                             <div className="flex flex-col md:flex-row gap-4 justify-between items-start md:items-center bg-slate-900/50 p-2 rounded-2xl border border-slate-800 backdrop-blur-sm sticky top-0 z-30">
                                 <div className="flex gap-1 bg-slate-900 p-1 rounded-xl w-full md:w-auto">
                                     {['OPEN', 'SOLD', 'UNSOLD', 'ALL'].map(status => (
@@ -253,12 +248,20 @@ export default function ViewerScreen({ data, liveState, setView, config }) {
                 </div>
             </div>
 
-            {/* MOBILE NAV */}
-            <div className="md:hidden fixed bottom-0 left-0 w-full bg-slate-950/90 backdrop-blur-xl border-t border-slate-800 z-50 flex justify-around p-2 pb-6">
+            {/* === MOBILE BOTTOM NAV (With Admin Button) === */}
+            <div className="md:hidden fixed bottom-0 left-0 w-full bg-slate-950/90 backdrop-blur-xl border-t border-slate-800 z-50 flex justify-around p-2 pb-6 safe-area-bottom">
                 <MobileNavButton active={activeTab === 'live'} onClick={() => setActiveTab('live')} icon={Gavel} label="Live" isLive={liveState?.status === 'ACTIVE'} />
                 <MobileNavButton active={activeTab === 'teams'} onClick={() => setActiveTab('teams')} icon={Users} label="Teams" />
                 <MobileNavButton active={activeTab === 'players'} onClick={() => setActiveTab('players')} icon={List} label="Pool" />
                 <MobileNavButton active={activeTab === 'sold'} onClick={() => setActiveTab('sold')} icon={DollarSign} label="Sold" />
+
+                {/* --- HOST LOGIN BUTTON --- */}
+                <button onClick={() => setView('login')} className="flex flex-col items-center justify-center w-full py-1 rounded-xl transition-all active:scale-95 text-slate-500 hover:text-white">
+                    <div className="relative">
+                        <LogIn className="w-5 h-5 mb-0.5" />
+                    </div>
+                    <span className="text-[10px] font-bold">Admin</span>
+                </button>
             </div>
         </div>
     );

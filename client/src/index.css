@@ -1,3 +1,26 @@
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
+
+/* --- GLOBAL SCROLLBAR HIDING --- */
+
+@layer base {
+
+    /* 1. Hide scrollbar for Chrome, Safari and Opera */
+    *::-webkit-scrollbar {
+        display: none;
+    }
+
+    /* 2. Hide scrollbar for IE, Edge and Firefox */
+    * {
+        -ms-overflow-style: none;
+        /* IE and Edge */
+        scrollbar-width: none;
+        /* Firefox */
+    }
+
+    /* Optional: Ensure body background matches your dark theme to prevent white flashes */
+    body {
+        @apply bg-slate-950 text-white;
+    }
+}

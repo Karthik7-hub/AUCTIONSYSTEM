@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import axios from 'axios';
 import { ShieldCheck, Lock, Zap } from 'lucide-react';
 
-const API_URL = 'https://spl-auctionsystem-backend.onrender.com';
+const API_URL = 'https://auctionsystem-backend.onrender.com';
 
 export default function SuperAdminLogin() {
     const navigate = useNavigate();

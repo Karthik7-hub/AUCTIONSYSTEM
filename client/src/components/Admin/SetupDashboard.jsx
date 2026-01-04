@@ -7,16 +7,16 @@ import {
 } from 'lucide-react';
 
 // --- CONFIGURATION ---
-const API_BASE_URL = 'https://spl-auctionsystem-backend.onrender.com';
+const API_BASE_URL = 'https://auctionsystem-backend.onrender.com';
 
 export default function SetupDashboard({ data, setView, auctionId, onRefresh, config }) {
 
     // --- 1. DYNAMIC CONFIGURATION ---
-    // Uses props passed from AuctionLayout, falls back to defaults if empty
     const categories = config?.categories?.length ? config.categories : ['Marquee', 'Set 1', 'Set 2', 'Set 3', 'Set 4'];
     const roles = config?.roles?.length ? config.roles : ['Batsman', 'Bowler', 'All Rounder', 'Wicket Keeper'];
 
     const [auctionCode, setAuctionCode] = useState('');
+    const [auctionName, setAuctionName] = useState('Tournament'); // NEW STATE for Name
     const [activeTab, setActiveTab] = useState('players');
     const [filterCategory, setFilterCategory] = useState('All');
     const [searchQuery, setSearchQuery] = useState('');
@@ -24,8 +24,6 @@ export default function SetupDashboard({ data, setView, auctionId, onRefresh, co
 
     // Form States
     const [newTeam, setNewTeam] = useState({ name: '', budget: 1000, color: '#3B82F6' });
-
-    // Initialize Player Form with first available options
     const [newPlayer, setNewPlayer] = useState({
         name: '',
         role: roles[0],
@@ -34,8 +32,15 @@ export default function SetupDashboard({ data, setView, auctionId, onRefresh, co
     });
 
     useEffect(() => {
-        setAuctionCode(Math.random().toString(36).substring(2, 8).toUpperCase());
-    }, []);
+        // Fetch specific auction details to get the Name
+        axios.get(`${API_BASE_URL}/api/auctions`).then(res => {
+            const currentAuction = res.data.find(a => a._id === auctionId);
+            if (currentAuction) {
+                setAuctionName(currentAuction.name);
+                setAuctionCode(currentAuction.accessCode); // Use real code instead of random
+            }
+        });
+    }, [auctionId]);
 
     // Update form defaults when config loads
     useEffect(() => {
@@ -46,7 +51,7 @@ export default function SetupDashboard({ data, setView, auctionId, onRefresh, co
                 category: categories[0]
             }));
         }
-    }, [config]); // Re-run when config arrives
+    }, [config]);
 
     const totalBudget = data.teams.reduce((acc, t) => acc + t.budget, 0);
     const totalSpent = data.teams.reduce((acc, t) => acc + t.spent, 0);
@@ -170,7 +175,8 @@ export default function SetupDashboard({ data, setView, auctionId, onRefresh, co
                             <Trophy className="w-5 h-5" />
                         </div>
                         <div>
-                            <h1 className="text-xl font-extrabold text-slate-800 leading-none tracking-tight">SPL Admin</h1>
+                            {/* DYNAMIC NAME HERE */}
+                            <h1 className="text-xl font-extrabold text-slate-800 leading-none tracking-tight">{auctionName}</h1>
                             <span className="text-xs text-slate-500 font-bold uppercase tracking-wider">Tournament Setup</span>
                         </div>
                     </div>
@@ -187,6 +193,9 @@ export default function SetupDashboard({ data, setView, auctionId, onRefresh, co
                         </div>
                         <div className="h-8 w-px bg-slate-200 hidden md:block"></div>
                         <div className="flex items-center gap-4">
+                            <div className="bg-slate-100 px-4 py-2 rounded-lg border border-slate-200 text-sm font-mono font-bold text-slate-600 tracking-widest hidden md:block">
+                                {auctionCode}
+                            </div>
                             <button type="button" onClick={() => setView('login')} className="text-red-500 hover:bg-red-50 p-2.5 rounded-full transition-colors border border-transparent hover:border-red-100">
                                 <LogOut className="w-5 h-5" />
                             </button>

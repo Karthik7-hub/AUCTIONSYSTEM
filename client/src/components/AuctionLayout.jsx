@@ -7,7 +7,7 @@ import SetupDashboard from './Admin/SetupDashboard';
 import AuctioneerControls from './Admin/AuctioneerControls';
 import ViewerScreen from './Viewer/ViewerScreen';
 
-const API_URL = 'https://spl-auctionsystem-backend.onrender.com';
+const API_URL = 'https://auctionsystem-backend.onrender.com';
 
 export default function AuctionLayout() {
     const { auctionId } = useParams();

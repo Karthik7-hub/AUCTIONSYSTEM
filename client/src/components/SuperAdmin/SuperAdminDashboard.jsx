@@ -7,7 +7,7 @@ import {
     CheckCircle, Clock, Archive
 } from 'lucide-react';
 
-const API_URL = 'https://spl-auctionsystem-backend.onrender.com';
+const API_URL = 'https://auctionsystem-backend.onrender.com';
 
 export default function SuperAdminDashboard() {
     const navigate = useNavigate();

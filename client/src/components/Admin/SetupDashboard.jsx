@@ -9,11 +9,13 @@ import {
 // --- CONFIGURATION ---
 const API_BASE_URL = 'https://spl-auctionsystem-backend.onrender.com';
 
-const CATEGORIES = ['Marquee', 'Set 1', 'Set 2', 'Set 3', 'Set 4'];
-const ROLES = ['Batsman', 'Bowler', 'All Rounder', 'Wicket Keeper'];
+export default function SetupDashboard({ data, setView, auctionId, onRefresh, config }) {
 
-// Added 'onRefresh' prop so the parent can update data without a page reload
-export default function SetupDashboard({ data, setView, onRefresh }) {
+    // --- 1. DYNAMIC CONFIGURATION ---
+    // Uses props passed from AuctionLayout, falls back to defaults if empty
+    const categories = config?.categories?.length ? config.categories : ['Marquee', 'Set 1', 'Set 2', 'Set 3', 'Set 4'];
+    const roles = config?.roles?.length ? config.roles : ['Batsman', 'Bowler', 'All Rounder', 'Wicket Keeper'];
+
     const [auctionCode, setAuctionCode] = useState('');
     const [activeTab, setActiveTab] = useState('players');
     const [filterCategory, setFilterCategory] = useState('All');
@@ -22,11 +24,29 @@ export default function SetupDashboard({ data, setView, onRefresh }) {
 
     // Form States
     const [newTeam, setNewTeam] = useState({ name: '', budget: 1000, color: '#3B82F6' });
-    const [newPlayer, setNewPlayer] = useState({ name: '', role: 'Batsman', category: 'Set 1', basePrice: 20 });
+
+    // Initialize Player Form with first available options
+    const [newPlayer, setNewPlayer] = useState({
+        name: '',
+        role: roles[0],
+        category: categories[0],
+        basePrice: 20
+    });
 
     useEffect(() => {
         setAuctionCode(Math.random().toString(36).substring(2, 8).toUpperCase());
     }, []);
+
+    // Update form defaults when config loads
+    useEffect(() => {
+        if (roles.length && categories.length) {
+            setNewPlayer(prev => ({
+                ...prev,
+                role: roles[0],
+                category: categories[0]
+            }));
+        }
+    }, [config]); // Re-run when config arrives
 
     const totalBudget = data.teams.reduce((acc, t) => acc + t.budget, 0);
     const totalSpent = data.teams.reduce((acc, t) => acc + t.spent, 0);
@@ -35,10 +55,8 @@ export default function SetupDashboard({ data, setView, onRefresh }) {
     const addTeam = async () => {
         if (!newTeam.name) return;
         try {
-            await axios.post(`${API_BASE_URL}/api/teams`, newTeam);
+            await axios.post(`${API_BASE_URL}/api/teams`, { ...newTeam, auctionId });
             setNewTeam({ name: '', budget: 1000, color: '#3B82F6' });
-
-            // Call the parent refresh function if it exists
             if (onRefresh) onRefresh();
         } catch (error) {
             console.error("Error adding team:", error);
@@ -51,8 +69,6 @@ export default function SetupDashboard({ data, setView, onRefresh }) {
         if (window.confirm('Delete this team?')) {
             try {
                 await axios.delete(`${API_BASE_URL}/api/teams/${id}`);
-
-                // Call the parent refresh function if it exists
                 if (onRefresh) onRefresh();
             } catch (error) {
                 console.error("Error deleting team:", error);
@@ -63,10 +79,8 @@ export default function SetupDashboard({ data, setView, onRefresh }) {
     const addPlayer = async () => {
         if (!newPlayer.name) return;
         try {
-            await axios.post(`${API_BASE_URL}/api/players`, newPlayer);
+            await axios.post(`${API_BASE_URL}/api/players`, { ...newPlayer, auctionId });
             setNewPlayer({ ...newPlayer, name: '', basePrice: 20 });
-
-            // Call the parent refresh function if it exists
             if (onRefresh) onRefresh();
         } catch (error) {
             console.error("Error adding player:", error);
@@ -78,8 +92,6 @@ export default function SetupDashboard({ data, setView, onRefresh }) {
         if (window.confirm('Are you sure you want to delete this player?')) {
             try {
                 await axios.delete(`${API_BASE_URL}/api/players/${id}`);
-
-                // Call the parent refresh function if it exists
                 if (onRefresh) onRefresh();
             } catch (error) {
                 console.error("Error deleting player:", error);
@@ -175,9 +187,6 @@ export default function SetupDashboard({ data, setView, onRefresh }) {
                         </div>
                         <div className="h-8 w-px bg-slate-200 hidden md:block"></div>
                         <div className="flex items-center gap-4">
-                            <div className="bg-slate-100 px-4 py-2 rounded-lg border border-slate-200 text-sm font-mono font-bold text-slate-600 tracking-widest">
-                                {auctionCode}
-                            </div>
                             <button type="button" onClick={() => setView('login')} className="text-red-500 hover:bg-red-50 p-2.5 rounded-full transition-colors border border-transparent hover:border-red-100">
                                 <LogOut className="w-5 h-5" />
                             </button>
@@ -245,9 +254,16 @@ export default function SetupDashboard({ data, setView, onRefresh }) {
                             <div className="grid grid-cols-2 gap-3">
                                 <div>
                                     <label className="text-[10px] font-bold text-slate-400 uppercase tracking-wider ml-1">Role</label>
-                                    <select value={newPlayer.role} onChange={e => setNewPlayer({ ...newPlayer, role: e.target.value })} className="w-full mt-1 border border-slate-200 bg-slate-50 p-3 rounded-xl outline-none text-sm font-medium text-slate-600 appearance-none">
-                                        {ROLES.map(r => <option key={r}>{r}</option>)}
+
+                                    {/* DYNAMIC ROLES DROPDOWN */}
+                                    <select
+                                        value={newPlayer.role}
+                                        onChange={e => setNewPlayer({ ...newPlayer, role: e.target.value })}
+                                        className="w-full mt-1 border border-slate-200 bg-slate-50 p-3 rounded-xl outline-none text-sm font-medium text-slate-600 appearance-none"
+                                    >
+                                        {roles.map(r => <option key={r} value={r}>{r}</option>)}
                                     </select>
+
                                 </div>
                                 <div>
                                     <label className="text-[10px] font-bold text-slate-400 uppercase tracking-wider ml-1">Base Price</label>
@@ -256,9 +272,16 @@ export default function SetupDashboard({ data, setView, onRefresh }) {
                             </div>
                             <div>
                                 <label className="text-[10px] font-bold text-slate-400 uppercase tracking-wider ml-1">Category</label>
-                                <select value={newPlayer.category} onChange={e => setNewPlayer({ ...newPlayer, category: e.target.value })} className="w-full mt-1 border border-slate-200 bg-slate-50 p-3 rounded-xl outline-none text-sm font-medium text-slate-600">
-                                    {CATEGORIES.map(c => <option key={c} value={c}>{c}</option>)}
+
+                                {/* DYNAMIC CATEGORIES DROPDOWN */}
+                                <select
+                                    value={newPlayer.category}
+                                    onChange={e => setNewPlayer({ ...newPlayer, category: e.target.value })}
+                                    className="w-full mt-1 border border-slate-200 bg-slate-50 p-3 rounded-xl outline-none text-sm font-medium text-slate-600"
+                                >
+                                    {categories.map(c => <option key={c} value={c}>{c}</option>)}
                                 </select>
+
                             </div>
                             <button type="button" onClick={addPlayer} className="w-full bg-green-600 hover:bg-green-700 text-white py-3 rounded-xl font-bold transition-colors shadow-lg shadow-green-500/20 active:scale-95">Add to Pool</button>
                         </div>
@@ -295,11 +318,14 @@ export default function SetupDashboard({ data, setView, onRefresh }) {
                                 </div>
                                 <div className="flex gap-2 w-full sm:w-auto overflow-x-auto pb-1 sm:pb-0 no-scrollbar">
                                     <button type="button" onClick={() => setFilterCategory('All')} className={`px-4 py-2 rounded-lg text-xs font-bold transition-all border ${filterCategory === 'All' ? 'bg-slate-800 text-white border-slate-800' : 'bg-white border-slate-200 text-slate-500 hover:border-slate-300'}`}>All</button>
-                                    {CATEGORIES.map(cat => (
+
+                                    {/* DYNAMIC CATEGORY FILTERS */}
+                                    {categories.map(cat => (
                                         <button key={cat} type="button" onClick={() => setFilterCategory(cat)} className={`px-4 py-2 rounded-lg text-xs font-bold whitespace-nowrap transition-all border ${filterCategory === cat ? 'bg-slate-800 text-white border-slate-800' : 'bg-white border-slate-200 text-slate-500 hover:border-slate-300'}`}>
                                             {cat}
                                         </button>
                                     ))}
+
                                 </div>
                             </div>
 
@@ -326,7 +352,7 @@ export default function SetupDashboard({ data, setView, onRefresh }) {
                                                     <td className="p-4">
                                                         <div className="flex gap-2">
                                                             <span className="bg-slate-100 text-slate-500 px-2 py-1 rounded-md text-[10px] font-bold uppercase">{player.role}</span>
-                                                            <span className={`px-2 py-1 rounded-md text-[10px] font-bold uppercase border ${player.category === 'Marquee' ? 'bg-yellow-50 text-yellow-700 border-yellow-200' : 'bg-white text-slate-400 border-slate-200'
+                                                            <span className={`px-2 py-1 rounded-md text-[10px] font-bold uppercase border ${player.category === categories[0] ? 'bg-yellow-50 text-yellow-700 border-yellow-200' : 'bg-white text-slate-400 border-slate-200'
                                                                 }`}>
                                                                 {player.category}
                                                             </span>

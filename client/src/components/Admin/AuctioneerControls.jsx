@@ -2,19 +2,22 @@ import React, { useState, useEffect } from 'react';
 import {
     ArrowLeft, Clock, AlertCircle, CheckCircle, Play,
     Gavel, User, Menu, X, Plus, Minus, Trophy, RefreshCcw,
-    Users, Wallet, Shuffle
+    Users, Wallet, Shuffle, RotateCcw, Pause, PlayCircle, Share2
 } from 'lucide-react';
 
-// --- CONFIGURATION ---
-const CATEGORY_ORDER = ['Marquee', 'Set 1', 'Set 2', 'Set 3', 'Set 4'];
+export default function AuctioneerControls({ data, socket, liveState, setView, auctionId, config }) {
 
-export default function AuctioneerControls({ data, socket, liveState, setView }) {
+    // --- 1. DYNAMIC CATEGORY ORDER ---
+    // Uses the custom categories from the Tournament Config
+    // Fallback to default if config isn't loaded yet
+    const categoryOrder = config?.categories?.length
+        ? config.categories
+        : ['Marquee', 'Set 1', 'Set 2', 'Set 3', 'Set 4'];
+
     const [increment, setIncrement] = useState(10);
     const [sidebarTab, setSidebarTab] = useState('queue');
     const [isSidebarOpen, setIsSidebarOpen] = useState(false);
-
-    // NEW: Prevents rapid-fire clicks
-    const [isPending, setIsPending] = useState(false);
+    const [isPending, setIsPending] = useState(false); // Prevents rapid-fire clicks
 
     // --- SAFETY CHECKS ---
     if (!data || !liveState) return <div className="h-screen flex items-center justify-center text-slate-500 font-bold animate-pulse">Loading Console...</div>;
@@ -22,9 +25,7 @@ export default function AuctioneerControls({ data, socket, liveState, setView })
     // --- AUTO-INCREMENT LOGIC ---
     useEffect(() => {
         if (!liveState) return;
-
-        // Unlock buttons whenever the bid updates from the server
-        setIsPending(false);
+        setIsPending(false); // Unlock buttons when state updates
 
         const bid = liveState.currentBid;
         let newIncrement = 10;
@@ -49,7 +50,7 @@ export default function AuctioneerControls({ data, socket, liveState, setView })
     const unsoldPlayers = data.players.filter(p => p.isUnsold);
     const soldPlayers = data.players.filter(p => p.isSold);
 
-    // Group Queue Players
+    // Group Queue Players dynamically based on their category
     const groupedQueue = queuePlayers.reduce((acc, player) => {
         const cat = player.category || 'Uncategorized';
         if (!acc[cat]) acc[cat] = [];
@@ -62,8 +63,19 @@ export default function AuctioneerControls({ data, socket, liveState, setView })
         : null;
 
     // --- ACTIONS ---
+    const undoBid = () => socket.emit('undo_bid', { auctionId });
+    const togglePause = () => socket.emit('toggle_pause', { auctionId });
+
+    const copyLink = () => {
+        // Copies the current URL (e.g. yoursite.com/auction/123/admin-live)
+        // Adjust logic if you want to share the VIEWER link instead (remove /admin-live)
+        const viewerUrl = window.location.href.replace('/admin-live', '');
+        navigator.clipboard.writeText(viewerUrl);
+        alert("Tournament Link Copied!");
+    };
+
     const startPlayer = (player) => {
-        socket.emit('start_player', { playerId: player._id, basePrice: player.basePrice });
+        socket.emit('start_player', { auctionId, playerId: player._id, basePrice: player.basePrice });
         setIsSidebarOpen(false);
     };
 
@@ -75,17 +87,19 @@ export default function AuctioneerControls({ data, socket, liveState, setView })
     };
 
     const resetRound = () => {
-        socket.emit('reset_round');
+        socket.emit('reset_round', { auctionId });
     };
 
+    const sellPlayer = () => socket.emit('sell_player', { auctionId });
+    const unsellPlayer = () => socket.emit('unsell_player', { auctionId });
+
     const placeBid = (teamId) => {
-        // 1. STOP if already processing a click
         if (isPending) return;
 
         const team = data.teams.find(t => t._id === teamId);
         if (!team) return;
 
-        // 2. STOP if this team is already the leader (Prevent Self-Bid)
+        // Prevent self-bidding
         if (liveState.leadingTeamId === teamId) return;
 
         const nextBid = liveState.leadingTeamId === null
@@ -97,18 +111,38 @@ export default function AuctioneerControls({ data, socket, liveState, setView })
             return;
         }
 
-        // 3. LOCK buttons immediately
         setIsPending(true);
-
-        socket.emit('place_bid', { teamId, amount: nextBid });
-
-        // Safety: Unlock after 1 second even if server lags, to prevent freezing
+        socket.emit('place_bid', { auctionId, teamId, amount: nextBid });
+        // Unlock after 1s just in case server lags
         setTimeout(() => setIsPending(false), 1000);
     };
 
     // --- RENDER ---
     return (
         <div className="flex h-screen bg-slate-100 font-sans overflow-hidden relative">
+
+            {/* PAUSE OVERLAY */}
+            {liveState.status === 'PAUSED' && (
+                <div className="absolute inset-0 z-50 bg-slate-900/80 backdrop-blur-sm flex flex-col items-center justify-center text-white animate-in fade-in duration-300">
+                    <Pause className="w-16 h-16 text-yellow-500 mb-4 animate-pulse" />
+                    <h2 className="text-4xl font-black tracking-tight">AUCTION PAUSED</h2>
+                    <button onClick={togglePause} className="mt-6 bg-white text-slate-900 px-6 py-3 rounded-full font-bold flex items-center gap-2 hover:bg-yellow-400 transition-colors shadow-lg active:scale-95">
+                        <PlayCircle className="w-5 h-5" /> Resume Auction
+                    </button>
+                </div>
+            )}
+
+            {/* HEADER ACTIONS (Absolute Top Right) */}
+            <div className="absolute top-4 right-4 z-50 flex gap-2">
+                <button onClick={copyLink} className="p-2 bg-white rounded-full shadow-md text-slate-600 hover:text-blue-600 active:scale-95 transition-transform" title="Copy Invite Link">
+                    <Share2 className="w-5 h-5" />
+                </button>
+                {liveState.status !== 'IDLE' && (
+                    <button onClick={togglePause} className="p-2 bg-white rounded-full shadow-md text-slate-600 hover:text-yellow-600 active:scale-95 transition-transform" title="Pause/Resume">
+                        {liveState.status === 'PAUSED' ? <PlayCircle className="w-5 h-5" /> : <Pause className="w-5 h-5" />}
+                    </button>
+                )}
+            </div>
 
             {/* MOBILE MENU TOGGLE */}
             <div className="md:hidden absolute top-4 left-4 z-50">
@@ -166,7 +200,8 @@ export default function AuctioneerControls({ data, socket, liveState, setView })
                         <>
                             {queuePlayers.length === 0 && <div className="p-8 text-center text-slate-400 text-xs italic">Queue Empty</div>}
 
-                            {CATEGORY_ORDER.map(category => {
+                            {/* DYNAMIC CATEGORY LOOP */}
+                            {categoryOrder.map(category => {
                                 const players = groupedQueue[category];
                                 if (!players || players.length === 0) return null;
 
@@ -202,12 +237,30 @@ export default function AuctioneerControls({ data, socket, liveState, setView })
                     )}
 
                     {/* VIEW: UNSOLD */}
-                    {sidebarTab === 'unsold' && unsoldPlayers.map(p => (
-                        <div key={p._id} onClick={() => startPlayer(p)} className="p-3 bg-white border border-red-200 rounded-xl cursor-pointer hover:border-red-500 active:scale-[0.98]">
-                            <div className="font-bold text-slate-700 text-sm">{p.name}</div>
-                            <span className="text-[10px] text-red-500 font-bold block mt-1">Tap to Re-Auction</span>
+                    {sidebarTab === 'unsold' && (
+                        <div className="space-y-3">
+                            {/* Button to pick random unsold player */}
+                            {unsoldPlayers.length > 0 && (
+                                <button
+                                    onClick={() => {
+                                        const randomIndex = Math.floor(Math.random() * unsoldPlayers.length);
+                                        startPlayer(unsoldPlayers[randomIndex]);
+                                    }}
+                                    className="w-full py-3 bg-red-600 hover:bg-red-700 text-white rounded-xl font-bold flex items-center justify-center gap-2 shadow-md transition-all active:scale-95"
+                                >
+                                    <Shuffle className="w-4 h-4" /> Pick Random Unsold
+                                </button>
+                            )}
+
+                            {unsoldPlayers.map(p => (
+                                <div key={p._id} onClick={() => startPlayer(p)} className="p-3 bg-white border border-red-200 rounded-xl cursor-pointer hover:border-red-500 active:scale-[0.98]">
+                                    <div className="font-bold text-slate-700 text-sm">{p.name}</div>
+                                    <span className="text-[10px] text-red-500 font-bold block mt-1">Tap to Re-Auction</span>
+                                </div>
+                            ))}
+                            {unsoldPlayers.length === 0 && <div className="p-8 text-center text-slate-400 text-xs italic">No Unsold Players</div>}
                         </div>
-                    ))}
+                    )}
 
                     {/* VIEW: SOLD */}
                     {sidebarTab === 'sold' && soldPlayers.map(p => (
@@ -266,7 +319,7 @@ export default function AuctioneerControls({ data, socket, liveState, setView })
                 )}
 
                 {/* ACTIVE AUCTION SCREEN */}
-                {currentPlayer && liveState.status === 'ACTIVE' && (
+                {currentPlayer && (
                     <div className="flex flex-col h-full w-full max-w-7xl mx-auto p-3 md:p-4 overflow-hidden">
 
                         {/* --- TOP: INFO CARD --- */}
@@ -311,10 +364,22 @@ export default function AuctioneerControls({ data, socket, liveState, setView })
                                 <div className="flex items-center gap-2 font-bold text-slate-700 text-sm md:text-base">
                                     <Gavel className="w-4 h-4 text-slate-400" /> Bidding Paddles
                                 </div>
-                                <div className="flex items-center bg-slate-100 rounded-lg p-0.5 border border-slate-200">
-                                    <button onClick={() => setIncrement(Math.max(1, increment - 5))} className="p-1.5 hover:bg-white rounded-md text-slate-500 active:scale-90 transition-transform"><Minus className="w-3 h-3" /></button>
-                                    <span className="px-2 font-mono font-bold text-sm w-12 text-center text-slate-700">₹{increment}</span>
-                                    <button onClick={() => setIncrement(increment + 5)} className="p-1.5 hover:bg-white rounded-md text-slate-500 active:scale-90 transition-transform"><Plus className="w-3 h-3" /></button>
+
+                                <div className="flex gap-2">
+                                    {/* Undo Button */}
+                                    <button
+                                        onClick={undoBid}
+                                        disabled={!liveState.leadingTeamId}
+                                        className="flex items-center gap-1 bg-slate-100 text-slate-600 px-3 py-1.5 rounded-lg text-sm font-bold hover:bg-slate-200 disabled:opacity-50 transition-colors active:scale-95"
+                                    >
+                                        <RotateCcw className="w-4 h-4" /> Undo
+                                    </button>
+
+                                    <div className="flex items-center bg-slate-100 rounded-lg p-0.5 border border-slate-200">
+                                        <button onClick={() => setIncrement(Math.max(1, increment - 5))} className="p-1.5 hover:bg-white rounded-md text-slate-500 active:scale-90 transition-transform"><Minus className="w-3 h-3" /></button>
+                                        <span className="px-2 font-mono font-bold text-sm w-12 text-center text-slate-700">₹{increment}</span>
+                                        <button onClick={() => setIncrement(increment + 5)} className="p-1.5 hover:bg-white rounded-md text-slate-500 active:scale-90 transition-transform"><Plus className="w-3 h-3" /></button>
+                                    </div>
                                 </div>
                             </div>
 
@@ -373,7 +438,7 @@ export default function AuctioneerControls({ data, socket, liveState, setView })
                             {/* Footer Actions */}
                             <div className="grid grid-cols-2 gap-3 mt-3 pt-3 border-t border-slate-100 shrink-0 z-10 bg-white">
                                 <button
-                                    onClick={() => socket.emit('sell_player')}
+                                    onClick={sellPlayer}
                                     disabled={!liveState.leadingTeamId}
                                     className={`
                     py-3 rounded-xl font-black text-base md:text-lg shadow-md flex items-center justify-center gap-2 text-white transition-all active:scale-95
@@ -383,7 +448,7 @@ export default function AuctioneerControls({ data, socket, liveState, setView })
                                     <CheckCircle className="w-5 h-5" /> SOLD
                                 </button>
                                 <button
-                                    onClick={() => socket.emit('unsell_player')}
+                                    onClick={unsellPlayer}
                                     className="bg-white border-2 border-red-100 text-red-600 hover:bg-red-50 hover:border-red-200 py-3 rounded-xl font-black text-base md:text-lg shadow-sm flex items-center justify-center gap-2 active:scale-95 transition-all"
                                 >
                                     <AlertCircle className="w-5 h-5" /> UNSOLD

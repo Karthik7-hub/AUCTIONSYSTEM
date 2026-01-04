@@ -1,9 +1,10 @@
-import React, { useState, useEffect, useMemo } from 'react';
-// Added 'LogIn' to imports
-import { Trophy, Users, List, Gavel, DollarSign, TrendingUp, Shield, CheckCircle, AlertCircle, Clock, Filter, Grid, Sparkles, Zap, Mic2, LogIn } from 'lucide-react';
+import React, { useState, useMemo } from 'react';
+import {
+    Trophy, Users, List, Gavel, DollarSign, TrendingUp,
+    CheckCircle, AlertCircle, Clock, Pause, Mic2, LogIn
+} from 'lucide-react';
 
-// Added setView to props
-export default function ViewerScreen({ data, liveState, setView }) {
+export default function ViewerScreen({ data, liveState, setView, config }) {
     const [activeTab, setActiveTab] = useState('live');
     const [viewStatus, setViewStatus] = useState('OPEN');
     const [selectedCategory, setSelectedCategory] = useState('All');
@@ -13,10 +14,15 @@ export default function ViewerScreen({ data, liveState, setView }) {
     const safeTeams = data?.teams || [];
 
     const categories = useMemo(() => {
+        // PRIORITIZE ADMIN CONFIG ORDER
+        if (config?.categories?.length) {
+            return ['All', ...config.categories];
+        }
+        // FALLBACK: Auto-detect from data
         if (safePlayers.length === 0) return ['All'];
         const cats = new Set(safePlayers.map(p => p.category || 'Uncategorized'));
         return ['All', ...cats];
-    }, [safePlayers]);
+    }, [safePlayers, config]);
 
     const getCleanSquad = (team) => {
         if (!team.players) return [];
@@ -48,7 +54,7 @@ export default function ViewerScreen({ data, liveState, setView }) {
                     <NavButton active={activeTab === 'players'} onClick={() => setActiveTab('players')} icon={List} label="Player Pool" />
                     <NavButton active={activeTab === 'sold'} onClick={() => setActiveTab('sold')} icon={DollarSign} label="Sold Feed" />
 
-                    {/* Desktop Login Button (Right Aligned) */}
+                    {/* Desktop Login Button */}
                     <div className="absolute right-0 top-0 h-full flex items-center pr-4">
                         <button
                             onClick={() => setView('login')}
@@ -235,7 +241,7 @@ export default function ViewerScreen({ data, liveState, setView }) {
     );
 }
 
-// === HELPER COMPONENTS ===
+// ... (Helper Components like FilterButton, NavButton, LiveAuctionView remain unchanged) ...
 function FilterButton({ label, active, onClick, colorClass }) {
     return (
         <button onClick={onClick} className={`rounded-lg py-2.5 text-xs font-bold uppercase tracking-wider transition-all transform active:scale-95 ${active ? `${colorClass} shadow-lg ring-1 ring-white/20` : 'bg-slate-800 text-slate-400 border border-slate-700 hover:bg-slate-700 hover:text-white'}`}>
@@ -266,11 +272,19 @@ function MobileNavButton({ active, onClick, icon: Icon, label, isLive }) {
     );
 }
 
-// === LIVE AUCTION VIEW (Unchanged from your snippet but required for context) ===
 function LiveAuctionView({ data, liveState }) {
-    // ... [Copy the LiveAuctionView function from your original code here, or use the one in previous answers] ...
     const currentPlayer = liveState?.currentPlayerId ? data.players.find(p => p._id === liveState.currentPlayerId) : null;
     const leadingTeam = liveState?.leadingTeamId ? data.teams.find(t => t._id === liveState.leadingTeamId) : null;
+
+    if (liveState?.status === 'PAUSED') {
+        return (
+            <div className="flex flex-col items-center justify-center h-[60vh] bg-slate-800 rounded-3xl border border-slate-700">
+                <Pause className="w-16 h-16 text-yellow-500 mb-4 animate-pulse" />
+                <h2 className="text-3xl font-bold text-white">Auction Paused</h2>
+                <p className="text-slate-400">We will be back shortly.</p>
+            </div>
+        );
+    }
 
     if ((liveState?.status === 'SOLD' || liveState?.status === 'UNSOLD') && currentPlayer) {
         const isSold = liveState.status === 'SOLD';

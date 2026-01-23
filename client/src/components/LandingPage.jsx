@@ -157,7 +157,7 @@ export default function LandingPage() {
             {/* Footer */}
             <div className="w-full border-t border-slate-900/50 bg-slate-950/80 backdrop-blur-md p-6 relative z-10 mt-auto">
                 <div className="max-w-6xl mx-auto flex flex-col md:flex-row justify-between items-center gap-4 text-xs text-slate-600">
-                    <p>© 2026 SPL Auction Platform. All rights reserved.</p>
+                    <p>© 2026 Auction Platform. All rights reserved.</p>
                     <button
                         onClick={() => navigate('/super-admin')}
                         className="flex items-center gap-2 hover:text-slate-400 transition-colors group"

@@ -1,28 +1,134 @@
-import React, { useState, useMemo, useEffect, useRef } from 'react';
+import React, { useState, useMemo, useEffect, useRef, useCallback } from 'react';
 import confetti from 'canvas-confetti';
 import {
     Trophy, Users, List, Gavel, DollarSign, TrendingUp,
-    CheckCircle, AlertCircle, Clock, Pause, Mic2, LogIn,
-    Filter, ChevronRight, Music
+    CheckCircle, Pause, Mic2, LogIn, ChevronRight,
+    X, Wallet, UserCheck, Shield, Activity, Target
 } from 'lucide-react';
 
-// --- SOUND ASSETS ---
-const SOUNDS = {
-    sold: new Audio('https://assets.mixkit.co/active_storage/sfx/2000/2000-preview.mp3'),
-    kaChing: new Audio('https://assets.mixkit.co/active_storage/sfx/2013/2013-preview.mp3'),
-    bid: new Audio('https://assets.mixkit.co/active_storage/sfx/2568/2568-preview.mp3'),
+// --- ASSETS & CONSTANTS ---
+const SOUND_URLS = {
+    sold: 'https://assets.mixkit.co/active_storage/sfx/2000/2000-preview.mp3',
+    kaChing: 'https://assets.mixkit.co/active_storage/sfx/2013/2013-preview.mp3',
+    bid: 'https://assets.mixkit.co/active_storage/sfx/2568/2568-preview.mp3',
+};
+
+const ROLE_ICONS = {
+    'Batsman': <Target className="w-3 h-3" />,
+    'Bowler': <Activity className="w-3 h-3" />,
+    'All Rounder': <Shield className="w-3 h-3" />,
+    'Wicket Keeper': <UserCheck className="w-3 h-3" />,
+    'default': <Users className="w-3 h-3" />
 };
 
 export default function ViewerScreen({ data, liveState, setView, config }) {
+    // --- STATE ---
     const [activeTab, setActiveTab] = useState('live');
     const [viewStatus, setViewStatus] = useState('OPEN');
     const [selectedCategory, setSelectedCategory] = useState('All');
+    const [selectedTeam, setSelectedTeam] = useState(null);
 
-    // Animation Refs
+    // --- REFS (State Tracking) ---
     const prevStatusRef = useRef(liveState?.status);
     const prevBidRef = useRef(liveState?.currentBid);
+    const lastCelebrationRef = useRef(0);
+    const audioUnlockedRef = useRef(false);
+    const audioInstancesRef = useRef({});
 
-    // --- EFFECTS ---
+    // --- ⚡ PERFORMANCE: MEMOIZED LOOKUPS (O(1) Access) ---
+    // Instead of .find() every render, we build maps once when data changes.
+
+    const safePlayers = useMemo(() => data?.players || [], [data?.players]);
+    const safeTeams = useMemo(() => data?.teams || [], [data?.teams]);
+
+    const playerMap = useMemo(() =>
+        new Map(safePlayers.map(p => [p._id, p])),
+        [safePlayers]);
+
+    const teamMap = useMemo(() =>
+        new Map(safeTeams.map(t => [t._id, t])),
+        [safeTeams]);
+
+    // Pre-calculate squads to avoid filtering on every render
+    const squadMap = useMemo(() => {
+        const map = new Map();
+        safeTeams.forEach(team => {
+            const squad = (team.players || []).map(entry => {
+                const id = typeof entry === 'object' ? entry._id : entry;
+                return playerMap.get(id);
+            }).filter(Boolean);
+            map.set(team._id, squad);
+        });
+        return map;
+    }, [safeTeams, playerMap]);
+
+    const categories = useMemo(() => {
+        if (config?.categories?.length) return ['All', ...config.categories];
+        if (safePlayers.length === 0) return ['All'];
+        const cats = new Set(safePlayers.map(p => p.category || 'Uncategorized'));
+        return ['All', ...cats];
+    }, [safePlayers, config]);
+
+    // --- 🔊 AUDIO ENGINE (Mobile Safe) ---
+    useEffect(() => {
+        // Initialize Audio Objects
+        Object.entries(SOUND_URLS).forEach(([key, url]) => {
+            audioInstancesRef.current[key] = new Audio(url);
+        });
+    }, []);
+
+    const unlockAudio = useCallback(() => {
+        if (audioUnlockedRef.current) return;
+
+        // Play and immediately pause all sounds to unlock AudioContext on mobile
+        Object.values(audioInstancesRef.current).forEach(audio => {
+            audio.volume = 0;
+            audio.play().catch(() => { });
+            audio.pause();
+            audio.currentTime = 0;
+            audio.volume = 0.5; // Reset volume
+        });
+        audioUnlockedRef.current = true;
+    }, []);
+
+    // Unlock on first interaction
+    useEffect(() => {
+        const handleInteraction = () => unlockAudio();
+        window.addEventListener('click', handleInteraction);
+        window.addEventListener('keydown', handleInteraction);
+        return () => {
+            window.removeEventListener('click', handleInteraction);
+            window.removeEventListener('keydown', handleInteraction);
+        };
+    }, [unlockAudio]);
+
+    const playSound = useCallback((type) => {
+        const sound = audioInstancesRef.current[type];
+        if (sound) {
+            sound.currentTime = 0;
+            sound.play().catch(e => console.warn('Audio blocked:', e));
+        }
+    }, []);
+
+    // --- EFFECTS & ANIMATION ---
+    const triggerCelebration = useCallback(() => {
+        // Throttle confetti to prevent frame drops on low-end devices
+        const now = Date.now();
+        if (now - lastCelebrationRef.current < 2000) return;
+        lastCelebrationRef.current = now;
+
+        playSound('kaChing');
+        setTimeout(() => playSound('sold'), 300);
+
+        const duration = 3000;
+        const end = Date.now() + duration;
+        (function frame() {
+            confetti({ particleCount: 5, angle: 60, spread: 55, origin: { x: 0 }, colors: ['#22c55e', '#eab308', '#ffffff'] });
+            confetti({ particleCount: 5, angle: 120, spread: 55, origin: { x: 1 }, colors: ['#22c55e', '#eab308', '#ffffff'] });
+            if (Date.now() < end) requestAnimationFrame(frame);
+        }());
+    }, [playSound]);
+
     useEffect(() => {
         const currentStatus = liveState?.status;
         const currentBid = liveState?.currentBid;
@@ -36,66 +142,13 @@ export default function ViewerScreen({ data, liveState, setView, config }) {
 
         prevStatusRef.current = currentStatus;
         prevBidRef.current = currentBid;
-    }, [liveState]);
+    }, [liveState, playSound, triggerCelebration]);
 
-    const triggerCelebration = () => {
-        playSound('kaChing');
-        setTimeout(() => playSound('sold'), 300);
-
-        const duration = 3000;
-        const end = Date.now() + duration;
-        (function frame() {
-            confetti({ particleCount: 5, angle: 60, spread: 55, origin: { x: 0 }, colors: ['#22c55e', '#eab308', '#ffffff'] });
-            confetti({ particleCount: 5, angle: 120, spread: 55, origin: { x: 1 }, colors: ['#22c55e', '#eab308', '#ffffff'] });
-            if (Date.now() < end) requestAnimationFrame(frame);
-        }());
-    };
-
-    const playSound = (type) => {
-        try {
-            const sound = SOUNDS[type];
-            if (sound) {
-                sound.currentTime = 0;
-                sound.volume = 0.5;
-                sound.play().catch(e => { });
-            }
-        } catch (e) { console.error(e); }
-    };
-
-    // --- DATA HELPERS ---
-    const safePlayers = data?.players || [];
-    const safeTeams = data?.teams || [];
-
-    const categories = useMemo(() => {
-        if (config?.categories?.length) return ['All', ...config.categories];
-        if (safePlayers.length === 0) return ['All'];
-        const cats = new Set(safePlayers.map(p => p.category || 'Uncategorized'));
-        return ['All', ...cats];
-    }, [safePlayers, config]);
-
-    const getCleanSquad = (team) => {
-        if (!team || !team.players) return [];
-        const uniqueMap = new Map();
-
-        team.players.forEach(entry => {
-            let player = null;
-            if (entry && typeof entry === 'object' && entry._id) {
-                player = entry;
-            } else if (typeof entry === 'string') {
-                player = safePlayers.find(p => p._id === entry);
-            }
-            if (player && player._id) {
-                uniqueMap.set(player._id, player);
-            }
-        });
-
-        return Array.from(uniqueMap.values());
-    };
-
+    // --- RENDER HELPERS ---
     if (!data || !data.players) return (
         <div className="min-h-screen bg-slate-950 flex items-center justify-center text-white">
             <div className="animate-spin rounded-full h-8 w-8 border-t-2 border-blue-500 mr-3"></div>
-            Loading...
+            Loading Resources...
         </div>
     );
 
@@ -103,61 +156,81 @@ export default function ViewerScreen({ data, liveState, setView, config }) {
         <div className="min-h-screen bg-slate-950 text-slate-100 font-sans flex flex-col relative pb-24 md:pb-0">
 
             {/* DESKTOP HEADER */}
-            <div className="hidden md:block bg-slate-900/80 backdrop-blur-xl border-b border-slate-800 sticky top-0 z-50">
+            <header className="hidden md:block bg-slate-900/80 backdrop-blur-xl border-b border-slate-800 sticky top-0 z-50">
                 <div className="max-w-7xl mx-auto flex justify-between items-center px-6 h-16">
-                    <div className="flex gap-8 h-full">
+                    <nav className="flex gap-8 h-full">
                         <NavButton active={activeTab === 'live'} onClick={() => setActiveTab('live')} icon={Gavel} label="Live Auction" isLive={liveState?.status === 'ACTIVE'} />
                         <NavButton active={activeTab === 'teams'} onClick={() => setActiveTab('teams')} icon={Users} label="Teams" />
                         <NavButton active={activeTab === 'players'} onClick={() => setActiveTab('players')} icon={List} label="Players" />
                         <NavButton active={activeTab === 'sold'} onClick={() => setActiveTab('sold')} icon={DollarSign} label="Feed" />
-                    </div>
-                    <button onClick={() => setView('login')} className="text-xs font-bold text-slate-500 hover:text-white transition-colors bg-slate-800 px-3 py-1.5 rounded-lg border border-slate-700">
-                        Admin
+                    </nav>
+                    <button onClick={() => setView('login')} className="text-xs font-bold text-slate-500 hover:text-white transition-colors bg-slate-800 px-3 py-1.5 rounded-lg border border-slate-700 hover:border-slate-500 focus:outline-none focus:ring-2 focus:ring-blue-500">
+                        Admin Login
                     </button>
                 </div>
-            </div>
+            </header>
 
-            {/* CONTENT */}
-            <div className="flex-1 overflow-y-auto p-4 md:p-8">
+            {/* MAIN CONTENT AREA */}
+            <main className="flex-1 overflow-y-auto p-4 md:p-8">
                 <div className="max-w-7xl mx-auto min-h-full">
 
                     {/* LIVE TAB */}
-                    {activeTab === 'live' && <LiveAuctionView data={data} liveState={liveState} />}
+                    {activeTab === 'live' && (
+                        <LiveAuctionView
+                            liveState={liveState}
+                            playerMap={playerMap}
+                            teamMap={teamMap}
+                        />
+                    )}
 
                     {/* TEAMS TAB */}
                     {activeTab === 'teams' && (
                         <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
                             {safeTeams.map((team) => {
-                                const cleanSquad = getCleanSquad(team);
-                                // DYNAMIC SPENT CALCULATION
+                                const cleanSquad = squadMap.get(team._id) || [];
                                 const realSpent = cleanSquad.reduce((total, p) => total + (p.soldPrice || 0), 0);
                                 const realRemaining = team.budget - realSpent;
 
                                 return (
-                                    <div key={team._id} className="bg-slate-900 rounded-2xl overflow-hidden border border-slate-800 shadow-xl flex flex-col h-[500px]">
-                                        <div className="p-5 relative shrink-0" style={{ backgroundColor: team.color }}>
+                                    <div
+                                        key={team._id}
+                                        onClick={() => setSelectedTeam(team)}
+                                        onKeyDown={(e) => e.key === 'Enter' && setSelectedTeam(team)}
+                                        tabIndex="0" // ♿ Accessibility: Keyboard Focus
+                                        role="button"
+                                        aria-label={`View details for ${team.name}`}
+                                        className="bg-slate-900 rounded-2xl overflow-hidden border border-slate-800 shadow-xl flex flex-col h-[500px] cursor-pointer hover:border-slate-600 hover:scale-[1.01] transition-all duration-300 group focus:ring-2 focus:ring-blue-500 outline-none"
+                                    >
+                                        <div className="p-5 relative shrink-0 transition-colors" style={{ backgroundColor: team.color }}>
                                             <h3 className="text-2xl font-black text-white drop-shadow-md relative z-10">{team.name}</h3>
-                                            <div className="text-white/80 text-xs font-bold uppercase mt-1 relative z-10">{cleanSquad.length} Players</div>
+                                            <div className="text-white/80 text-xs font-bold uppercase mt-1 relative z-10 flex items-center gap-1">
+                                                {cleanSquad.length} Players
+                                                <ChevronRight className="w-4 h-4 opacity-0 group-hover:opacity-100 transition-opacity transform group-hover:translate-x-1" />
+                                            </div>
                                             <Trophy className="absolute -right-4 -top-4 w-24 h-24 text-white opacity-20 rotate-12" />
                                         </div>
+
                                         <div className="p-3 bg-slate-950/30 border-b border-slate-800 flex justify-between items-center text-sm shrink-0">
-                                            <div className="font-bold text-slate-400">Purse Left: <span className={realRemaining < 0 ? "text-red-500" : "text-green-400"}>₹{realRemaining}L</span></div>
+                                            <div className="font-bold text-slate-400">Purse: <span className={realRemaining < 0 ? "text-red-500" : "text-green-400"}>₹{realRemaining}L</span></div>
                                             <div className="font-bold text-slate-400">Spent: <span className="text-blue-400">₹{realSpent}L</span></div>
                                         </div>
 
-                                        <div className="p-4 flex-1 bg-slate-900 overflow-y-auto [&::-webkit-scrollbar]:w-2 [&::-webkit-scrollbar-thumb]:bg-slate-700 [&::-webkit-scrollbar-track]:bg-transparent">
+                                        <div className="p-4 flex-1 bg-slate-900 overflow-y-auto pointer-events-none">
                                             {cleanSquad.length === 0 ? (
                                                 <div className="h-full flex flex-col items-center justify-center text-slate-600 text-xs border-2 border-dashed border-slate-800 rounded-xl">
                                                     <Users className="w-6 h-6 mb-2 opacity-50" />
-                                                    No players purchased yet.
+                                                    Empty Squad
                                                 </div>
                                             ) : (
                                                 <div className="space-y-2">
                                                     {cleanSquad.map(p => (
-                                                        <div key={p._id} className="flex justify-between items-center bg-slate-800/50 p-3 rounded-lg border border-slate-800 hover:bg-slate-800 transition-colors">
-                                                            <div>
-                                                                <div className="font-bold text-slate-200 text-sm">{p.name}</div>
-                                                                <div className="text-[10px] text-slate-500 uppercase font-bold">{p.role}</div>
+                                                        <div key={p._id} className="flex justify-between items-center bg-slate-800/50 p-3 rounded-lg border border-slate-800">
+                                                            <div className="flex items-center gap-2">
+                                                                <div className="text-slate-500">{ROLE_ICONS[p.role] || ROLE_ICONS['default']}</div>
+                                                                <div>
+                                                                    <div className="font-bold text-slate-200 text-sm">{p.name}</div>
+                                                                    <div className="text-[10px] text-slate-500 uppercase font-bold">{p.role}</div>
+                                                                </div>
                                                             </div>
                                                             <div className="font-mono text-green-400 text-xs font-bold bg-green-900/20 px-2 py-1 rounded">₹{p.soldPrice}L</div>
                                                         </div>
@@ -199,13 +272,16 @@ export default function ViewerScreen({ data, liveState, setView, config }) {
                                     })
                                     .filter(p => selectedCategory === 'All' || p.category === selectedCategory)
                                     .map(p => {
-                                        const soldToTeam = p.isSold ? safeTeams.find(t => t._id === p.soldTo) : null;
+                                        const soldToTeam = p.isSold ? teamMap.get(p.soldTo) : null;
                                         return (
                                             <div key={p._id} className="bg-slate-900 p-4 rounded-xl border border-slate-800 hover:border-slate-600 transition-all relative group">
                                                 {p.isSold && <div className="absolute top-3 right-3 text-green-500"><CheckCircle className="w-4 h-4" /></div>}
                                                 <div className="mb-3">
-                                                    <span className="text-[9px] font-bold text-slate-500 uppercase tracking-wider">{p.category} • {p.role}</span>
-                                                    <h3 className={`text-base font-bold leading-tight ${p.isUnsold ? 'text-slate-500 line-through' : 'text-white'}`}>{p.name}</h3>
+                                                    <span className="text-[9px] font-bold text-slate-500 uppercase tracking-wider flex items-center gap-1">
+                                                        {ROLE_ICONS[p.role] || ROLE_ICONS['default']}
+                                                        {p.category} • {p.role}
+                                                    </span>
+                                                    <h3 className={`text-base font-bold leading-tight mt-1 ${p.isUnsold ? 'text-slate-500 line-through' : 'text-white'}`}>{p.name}</h3>
                                                 </div>
                                                 <div className="pt-3 border-t border-slate-800 flex justify-between items-end">
                                                     <div>
@@ -228,7 +304,7 @@ export default function ViewerScreen({ data, liveState, setView, config }) {
                             <div className="p-4 border-b border-slate-800 font-bold text-sm text-slate-400">Live Feed</div>
                             <div className="divide-y divide-slate-800">
                                 {[...safePlayers].reverse().filter(p => p.isSold).map(p => {
-                                    const team = safeTeams.find(t => t._id === p.soldTo);
+                                    const team = teamMap.get(p.soldTo);
                                     return (
                                         <div key={p._id} className="p-4 flex justify-between items-center hover:bg-slate-800/50 transition-colors">
                                             <div className="flex items-center gap-3">
@@ -246,16 +322,23 @@ export default function ViewerScreen({ data, liveState, setView, config }) {
                         </div>
                     )}
                 </div>
-            </div>
+            </main>
 
-            {/* === MOBILE BOTTOM NAV (With Admin Button) === */}
+            {/* --- TEAM DETAIL MODAL POPUP --- */}
+            {selectedTeam && (
+                <TeamDetailModal
+                    team={selectedTeam}
+                    squad={squadMap.get(selectedTeam._id) || []}
+                    onClose={() => setSelectedTeam(null)}
+                />
+            )}
+
+            {/* === MOBILE BOTTOM NAV === */}
             <div className="md:hidden fixed bottom-0 left-0 w-full bg-slate-950/90 backdrop-blur-xl border-t border-slate-800 z-50 flex justify-around p-2 pb-6 safe-area-bottom">
                 <MobileNavButton active={activeTab === 'live'} onClick={() => setActiveTab('live')} icon={Gavel} label="Live" isLive={liveState?.status === 'ACTIVE'} />
                 <MobileNavButton active={activeTab === 'teams'} onClick={() => setActiveTab('teams')} icon={Users} label="Teams" />
                 <MobileNavButton active={activeTab === 'players'} onClick={() => setActiveTab('players')} icon={List} label="Pool" />
                 <MobileNavButton active={activeTab === 'sold'} onClick={() => setActiveTab('sold')} icon={DollarSign} label="Sold" />
-
-                {/* --- HOST LOGIN BUTTON --- */}
                 <button onClick={() => setView('login')} className="flex flex-col items-center justify-center w-full py-1 rounded-xl transition-all active:scale-95 text-slate-500 hover:text-white">
                     <div className="relative">
                         <LogIn className="w-5 h-5 mb-0.5" />
@@ -268,6 +351,133 @@ export default function ViewerScreen({ data, liveState, setView, config }) {
 }
 
 // --- SUB-COMPONENTS ---
+
+function TeamDetailModal({ team, squad, onClose }) {
+    const realSpent = useMemo(() => squad.reduce((total, p) => total + (p.soldPrice || 0), 0), [squad]);
+    const realRemaining = team.budget - realSpent;
+
+    // Composition Calculation
+    const composition = useMemo(() => {
+        const counts = { Batsman: 0, Bowler: 0, 'All Rounder': 0, 'Wicket Keeper': 0 };
+        squad.forEach(p => {
+            if (counts[p.role] !== undefined) counts[p.role]++;
+        });
+        return counts;
+    }, [squad]);
+
+    // Close on escape key
+    useEffect(() => {
+        const handleEsc = (e) => { if (e.key === 'Escape') onClose(); }
+        window.addEventListener('keydown', handleEsc);
+        return () => window.removeEventListener('keydown', handleEsc);
+    }, [onClose]);
+
+    return (
+        <div className="fixed inset-0 z-[100] flex items-center justify-center p-4" role="dialog" aria-modal="true" aria-labelledby="modal-title">
+            {/* Backdrop */}
+            <div className="absolute inset-0 bg-slate-950/80 backdrop-blur-sm transition-opacity" onClick={onClose}></div>
+
+            {/* Modal Content */}
+            <div className="relative bg-slate-900 w-full max-w-2xl max-h-[85vh] rounded-3xl border border-slate-800 shadow-2xl flex flex-col overflow-hidden animate-in zoom-in-95 duration-200">
+
+                {/* Header */}
+                <div className="relative p-6 shrink-0" style={{ backgroundColor: team.color }}>
+                    <button onClick={onClose} className="absolute top-4 right-4 p-2 bg-black/20 hover:bg-black/40 rounded-full text-white transition-colors" aria-label="Close Modal">
+                        <X className="w-5 h-5" />
+                    </button>
+                    <div className="flex items-center gap-4">
+                        <div className="w-16 h-16 bg-white/10 rounded-2xl flex items-center justify-center backdrop-blur-md border border-white/20">
+                            <Trophy className="w-8 h-8 text-white" />
+                        </div>
+                        <div>
+                            <h2 id="modal-title" className="text-3xl font-black text-white drop-shadow-md">{team.name}</h2>
+                            <div className="text-white/80 font-bold text-sm uppercase tracking-wider">Team Overview</div>
+                        </div>
+                    </div>
+                </div>
+
+                {/* Stats Row */}
+                <div className="grid grid-cols-3 divide-x divide-slate-800 bg-slate-950 border-b border-slate-800 shrink-0">
+                    <div className="p-4 text-center">
+                        <div className="text-slate-500 text-[10px] font-bold uppercase tracking-wider mb-1 flex items-center justify-center gap-1">
+                            <UserCheck className="w-3 h-3" /> Players
+                        </div>
+                        <div className="text-2xl font-black text-white">{squad.length}</div>
+                    </div>
+                    <div className="p-4 text-center">
+                        <div className="text-slate-500 text-[10px] font-bold uppercase tracking-wider mb-1 flex items-center justify-center gap-1">
+                            <Wallet className="w-3 h-3" /> Purse Left
+                        </div>
+                        <div className={`text-2xl font-black font-mono ${realRemaining < 0 ? 'text-red-500' : 'text-green-400'}`}>
+                            {realRemaining}L
+                        </div>
+                    </div>
+                    <div className="p-4 text-center">
+                        <div className="text-slate-500 text-[10px] font-bold uppercase tracking-wider mb-1 flex items-center justify-center gap-1">
+                            <TrendingUp className="w-3 h-3" /> Total Spent
+                        </div>
+                        <div className="text-2xl font-black font-mono text-blue-400">{realSpent}L</div>
+                    </div>
+                </div>
+
+                {/* 📊 VISUAL COMPOSITION BAR */}
+                <div className="bg-slate-900 px-6 py-3 border-b border-slate-800 flex gap-2">
+                    {Object.entries(composition).map(([role, count]) => {
+                        if (count === 0) return null;
+                        const colorMap = { 'Batsman': 'bg-blue-500', 'Bowler': 'bg-green-500', 'All Rounder': 'bg-purple-500', 'Wicket Keeper': 'bg-yellow-500' };
+                        return (
+                            <div key={role} className="flex-1 flex flex-col gap-1">
+                                <div className="flex justify-between text-[10px] text-slate-400 font-bold uppercase">
+                                    <span>{role.split(' ')[0]}</span>
+                                    <span>{count}</span>
+                                </div>
+                                <div className="h-1.5 w-full bg-slate-800 rounded-full overflow-hidden">
+                                    <div className={`h-full ${colorMap[role] || 'bg-slate-500'}`} style={{ width: '100%' }}></div>
+                                </div>
+                            </div>
+                        )
+                    })}
+                </div>
+
+                {/* Squad List */}
+                <div className="flex-1 overflow-y-auto p-4 bg-slate-900">
+                    <div className="text-slate-400 font-bold text-xs uppercase mb-3 px-2">Acquired Players</div>
+                    {squad.length === 0 ? (
+                        <div className="h-40 flex flex-col items-center justify-center text-slate-600 border-2 border-dashed border-slate-800 rounded-xl m-2">
+                            <Users className="w-8 h-8 mb-2 opacity-50" />
+                            <span className="text-sm font-bold">No players bought yet</span>
+                        </div>
+                    ) : (
+                        <div className="space-y-2">
+                            {squad.map((p, idx) => (
+                                <div key={p._id} className="flex items-center justify-between bg-slate-800/50 p-3 rounded-xl border border-slate-800/50 hover:bg-slate-800 hover:border-slate-700 transition-all">
+                                    <div className="flex items-center gap-3">
+                                        <div className="text-slate-500 font-mono text-xs font-bold w-4">{idx + 1}</div>
+                                        <div className="w-8 h-8 rounded-full bg-slate-700 flex items-center justify-center text-slate-300">
+                                            {ROLE_ICONS[p.role] || <Users className="w-4 h-4" />}
+                                        </div>
+                                        <div>
+                                            <div className="text-white font-bold text-sm">{p.name}</div>
+                                            <div className="text-slate-500 text-[10px] uppercase font-bold">{p.category} • {p.role}</div>
+                                        </div>
+                                    </div>
+                                    <div className="text-right">
+                                        <div className="text-green-400 font-mono font-bold">₹{p.soldPrice}L</div>
+                                    </div>
+                                </div>
+                            ))}
+                        </div>
+                    )}
+                </div>
+
+                {/* Footer */}
+                <div className="p-3 bg-slate-950 border-t border-slate-800 text-center text-xs text-slate-500 font-bold uppercase shrink-0">
+                    {team.budget}L Initial Budget
+                </div>
+            </div>
+        </div>
+    );
+}
 
 function NavButton({ active, onClick, icon: Icon, label, isLive }) {
     return (
@@ -291,9 +501,9 @@ function MobileNavButton({ active, onClick, icon: Icon, label, isLive }) {
     );
 }
 
-function LiveAuctionView({ data, liveState }) {
-    const currentPlayer = liveState?.currentPlayerId ? data.players.find(p => p._id === liveState.currentPlayerId) : null;
-    const leadingTeam = liveState?.leadingTeamId ? data.teams.find(t => t._id === liveState.leadingTeamId) : null;
+function LiveAuctionView({ liveState, playerMap, teamMap }) {
+    const currentPlayer = liveState?.currentPlayerId ? playerMap.get(liveState.currentPlayerId) : null;
+    const leadingTeam = liveState?.leadingTeamId ? teamMap.get(liveState.leadingTeamId) : null;
 
     if (liveState?.status === 'PAUSED') {
         return (
@@ -311,7 +521,10 @@ function LiveAuctionView({ data, liveState }) {
                 <div className={`absolute inset-0 opacity-20 ${isSold ? 'bg-gradient-to-b from-green-600 to-slate-950' : 'bg-gradient-to-b from-red-600 to-slate-950'}`}></div>
                 <div className="relative z-10 text-center">
                     <h2 className="text-3xl md:text-5xl font-black text-white mb-2 drop-shadow-2xl">{currentPlayer.name}</h2>
-                    <div className="text-slate-400 font-bold uppercase tracking-widest text-sm mb-8">{currentPlayer.role}</div>
+                    <div className="text-slate-400 font-bold uppercase tracking-widest text-sm mb-8 flex items-center justify-center gap-2">
+                        {ROLE_ICONS[currentPlayer.role] || ROLE_ICONS['default']}
+                        {currentPlayer.role}
+                    </div>
 
                     <div className={`text-6xl md:text-9xl font-black transform -rotate-6 ${isSold ? 'text-green-500 drop-shadow-[0_0_25px_rgba(34,197,94,0.5)]' : 'text-red-500'}`}>
                         {isSold ? 'SOLD' : 'UNSOLD'}
@@ -338,7 +551,9 @@ function LiveAuctionView({ data, liveState }) {
                         <div>
                             <span className="inline-block px-3 py-1 bg-blue-600/20 text-blue-400 rounded-full text-[10px] font-bold uppercase tracking-wider mb-4 border border-blue-500/30">{currentPlayer.category}</span>
                             <h1 className="text-4xl md:text-5xl font-black text-white leading-tight mb-2">{currentPlayer.name}</h1>
-                            <div className="text-xl font-bold text-slate-500 uppercase tracking-widest">{currentPlayer.role}</div>
+                            <div className="text-xl font-bold text-slate-500 uppercase tracking-widest flex items-center gap-2">
+                                {ROLE_ICONS[currentPlayer.role]} {currentPlayer.role}
+                            </div>
                         </div>
                         <div className="mt-8 pt-8 border-t border-slate-800">
                             <div className="text-slate-500 text-xs font-bold uppercase mb-1">Base Price</div>
@@ -356,7 +571,8 @@ function LiveAuctionView({ data, liveState }) {
                             <span className="text-red-500 font-bold uppercase tracking-[0.2em] text-xs">Live Bidding</span>
                         </div>
 
-                        <div className="relative z-10 text-7xl md:text-9xl font-black font-mono text-white drop-shadow-2xl mb-8 flex items-baseline">
+                        {/* ARIA Live Region for accessibility announcements of bid changes */}
+                        <div role="status" aria-live="polite" className="relative z-10 text-7xl md:text-9xl font-black font-mono text-white drop-shadow-2xl mb-8 flex items-baseline">
                             <span className="text-4xl text-slate-600 mr-2">₹</span>{liveState.currentBid}<span className="text-2xl text-slate-600 ml-2">L</span>
                         </div>
 

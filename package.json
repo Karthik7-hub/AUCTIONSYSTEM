@@ -1,0 +1,12 @@
+{
+  "name": "auction-system-monorepo",
+  "version": "1.0.0",
+  "description": "Monorepo containing client and server auction systems",
+  "main": "start.js",
+  "scripts": {
+    "start": "node start.js"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC"
+}

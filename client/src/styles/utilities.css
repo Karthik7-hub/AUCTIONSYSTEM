@@ -126,8 +126,8 @@
 .h-full { height: 100% !important; }
 .w-3 { width: 0.75rem !important; }
 .h-3 { height: 0.75rem !important; }
-.w-3.5 { width: 0.875rem !important; }
-.h-3.5 { height: 0.875rem !important; }
+.w-3\.5 { width: 0.875rem !important; }
+.h-3\.5 { height: 0.875rem !important; }
 .w-4 { width: 1rem !important; }
 .h-4 { height: 1rem !important; }
 .w-5 { width: 1.25rem !important; }

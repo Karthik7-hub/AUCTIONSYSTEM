@@ -1,9 +1,9 @@
 import React from 'react';
 import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
-import LandingPage from './components/LandingPage';
-import AuctionLayout from './components/AuctionLayout';
-import SuperAdminLogin from './components/SuperAdmin/SuperAdminLogin'; // Import
-import SuperAdminDashboard from './components/SuperAdmin/SuperAdminDashboard'; // Import
+import LandingPage from '@pages/Landing/LandingPage';
+import AuctionLayout from '@layouts/AuctionLayout';
+import SuperAdminLogin from '@pages/SuperAdmin/SuperAdminLogin';
+import SuperAdminDashboard from '@pages/SuperAdmin/SuperAdminDashboard';
 
 function App() {
     return (

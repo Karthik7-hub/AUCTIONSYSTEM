@@ -1,0 +1,122 @@
+/* Animations & Keyframes */
+.animate-fade-in {
+  animation: anim-fade-in 0.2s cubic-bezier(0.4, 0, 0.2, 1) forwards;
+}
+
+@keyframes anim-fade-in {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+.animate-slide-in-left {
+  animation: anim-slide-in-left 0.3s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
+@keyframes anim-slide-in-left {
+  from {
+    transform: translateX(-0.5rem);
+    opacity: 0;
+  }
+  to {
+    transform: translateX(0);
+    opacity: 1;
+  }
+}
+
+.animate-zoom-in {
+  animation: anim-zoom-in 0.3s cubic-bezier(0.34, 1.56, 0.64, 1) forwards;
+}
+
+@keyframes anim-zoom-in {
+  from {
+    transform: scale(0.95);
+    opacity: 0;
+  }
+  to {
+    transform: scale(1);
+    opacity: 1;
+  }
+}
+
+.animate-pulse {
+  animation: anim-pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+}
+
+@keyframes anim-pulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: .5; }
+}
+
+.animate-bounce {
+  animation: anim-bounce 1s infinite;
+}
+
+@keyframes anim-bounce {
+  0%, 100% {
+    transform: translateY(-25%);
+    animation-timing-function: cubic-bezier(0.8, 0, 1, 1);
+  }
+  50% {
+    transform: translateY(0);
+    animation-timing-function: cubic-bezier(0, 0, 0.2, 1);
+  }
+}
+
+/* Common active scale effects */
+.active-scale-95:active {
+  transform: scale(0.95);
+}
+
+.active-scale-98:active {
+  transform: scale(0.98);
+}
+
+/* CSS variables inline style helper conversions */
+.text-center {
+  text-align: center;
+}
+
+.font-mono {
+  font-family: var(--font-mono);
+}
+
+.font-bold {
+  font-weight: var(--weight-bold);
+}
+
+.relative {
+  position: relative;
+}
+
+.z-10 {
+  z-index: 10;
+}
+
+.hidden {
+  display: none !important;
+}
+
+.md-hidden {
+  display: flex !important;
+}
+
+.md-block {
+  display: none !important;
+}
+
+@media (min-width: 768px) {
+  .md-hidden {
+    display: none !important;
+  }
+  .md-block {
+    display: flex !important;
+  }
+}
+
+.fixed {
+  position: fixed;
+}
+
+.absolute {
+  position: absolute;
+}

@@ -1,0 +1,38 @@
+/* Responsive layout overrides */
+@media (max-width: 767px) {
+  .paddle-btn {
+    padding: var(--space-4) var(--space-2) !important;
+  }
+  .paddles-grid {
+    grid-template-columns: repeat(2, 1fr) !important;
+  }
+  .modal-container {
+    width: 95% !important;
+    max-height: 90vh !important;
+  }
+  .stats-matrix {
+    grid-template-columns: repeat(2, 1fr) !important;
+  }
+}
+
+@media (max-width: 480px) {
+  .stats-matrix {
+    grid-template-columns: 1fr !important;
+  }
+  .paddles-grid {
+    grid-template-columns: 1fr !important;
+  }
+  .modal-stats-grid {
+    grid-template-columns: 1fr !important;
+  }
+  .modal-stat-col {
+    border-right: none !important;
+    border-bottom: 1px solid var(--border-light);
+  }
+  .theme-dark .modal-stat-col {
+    border-bottom-color: var(--border-dark);
+  }
+  .modal-stat-col:last-child {
+    border-bottom: none !important;
+  }
+}

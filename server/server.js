@@ -45,7 +45,8 @@ const getRoomState = (auctionId) => {
 };
 
 // --- DATABASE CONNECTION ---
-mongoose.connect(process.env.MONGO_URI)
+const mongoURI = process.env.MONGO_URI || 'mongodb://localhost:27017/auction_system';
+mongoose.connect(mongoURI)
     .then(() => console.log("✅ Scalable DB Connected"))
     .catch(err => console.error("❌ DB Error:", err));
 
@@ -171,6 +172,16 @@ app.delete('/api/players/:id', async (req, res) => {
                 // Refund team money
                 await Team.findByIdAndUpdate(player.soldTo, { $pull: { players: player._id }, $inc: { spent: -player.soldPrice } });
             }
+            
+            // Visual Integrity: If player is currently active in bidding state, reset the room state
+            if (auctionRooms.has(auctionId)) {
+                const state = auctionRooms.get(auctionId);
+                if (state && String(state.currentPlayerId) === String(req.params.id)) {
+                    Object.assign(state, { currentBid: 0, leadingTeamId: null, currentPlayerId: null, status: 'IDLE', bidHistory: [] });
+                    io.to(auctionId).emit('auction_state', state);
+                }
+            }
+
             await Player.findByIdAndDelete(req.params.id);
             io.to(auctionId).emit('data_update');
         }
@@ -286,6 +297,24 @@ io.on('connection', (socket) => {
         const state = getRoomState(auctionId);
         Object.assign(state, { currentBid: 0, leadingTeamId: null, currentPlayerId: null, status: 'IDLE', bidHistory: [] });
         io.to(auctionId).emit('auction_state', state);
+    });
+});
+
+// --- GLOBAL ERROR HANDLING MIDDLEWARE ---
+
+// Catch-all route handler for undefined endpoints
+app.use((req, res, next) => {
+    res.status(404).json({ error: `Not Found: ${req.originalUrl}` });
+});
+
+// Global error handler middleware
+app.use((err, req, res, next) => {
+    console.error("🔥 Server Error:", err.stack);
+    res.status(err.status || 500).json({
+        error: {
+            message: err.message || "Internal Server Error",
+            status: err.status || 500
+        }
     });
 });
 

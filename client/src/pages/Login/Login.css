@@ -1,0 +1,21 @@
+/* Host Login Stylesheet */
+.login-logo-container {
+  color: var(--blue-500);
+}
+
+.login-btn-row {
+  display: flex;
+  gap: var(--space-3);
+}
+
+.login-btn-row .btn-secondary {
+  flex: 1;
+}
+
+.login-btn-row .btn-primary {
+  flex: 2;
+}
+
+.login-margin-bottom {
+  margin-bottom: var(--space-8);
+}

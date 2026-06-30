@@ -120,3 +120,47 @@
 .absolute {
   position: absolute;
 }
+
+/* Sizing utilities */
+.w-full { width: 100% !important; }
+.h-full { height: 100% !important; }
+.w-3 { width: 0.75rem !important; }
+.h-3 { height: 0.75rem !important; }
+.w-3.5 { width: 0.875rem !important; }
+.h-3.5 { height: 0.875rem !important; }
+.w-4 { width: 1rem !important; }
+.h-4 { height: 1rem !important; }
+.w-5 { width: 1.25rem !important; }
+.h-5 { height: 1.25rem !important; }
+.w-6 { width: 1.5rem !important; }
+.h-6 { height: 1.5rem !important; }
+.w-8 { width: 2rem !important; }
+.h-8 { height: 2rem !important; }
+.w-10 { width: 2.5rem !important; }
+.h-10 { height: 2.5rem !important; }
+.w-12 { width: 3rem !important; }
+.h-12 { height: 3rem !important; }
+
+/* Text Color Utilities mapping to variables */
+.text-white { color: #ffffff !important; }
+.text-blue-500 { color: var(--blue-500) !important; }
+.text-blue-600 { color: var(--blue-600) !important; }
+.text-green-505 { color: var(--green-505) !important; }
+.text-green-500 { color: var(--green-500) !important; }
+.text-green-600 { color: var(--green-600) !important; }
+.text-red-500 { color: var(--red-500) !important; }
+.text-red-600 { color: var(--red-600) !important; }
+.text-yellow-500 { color: var(--yellow-500) !important; }
+.text-yellow-600 { color: var(--yellow-600) !important; }
+.text-purple-500 { color: var(--purple-600) !important; }
+.text-purple-600 { color: var(--purple-650) !important; }
+.text-orange-500 { color: var(--orange-500) !important; }
+.text-orange-600 { color: var(--orange-600) !important; }
+.text-slate-400 { color: var(--slate-400) !important; }
+.text-slate-500 { color: var(--slate-500) !important; }
+
+/* Miscellaneous utilities */
+.overflow-hidden { overflow: hidden !important; }
+.opacity-50 { opacity: 0.5 !important; }
+.mb-2 { margin-bottom: var(--space-2) !important; }
+.line-through { text-decoration: line-through !important; }

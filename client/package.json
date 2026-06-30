@@ -24,7 +24,6 @@
         "vite": "^4.4.5"
     },
     "description": "",
-    "main": "tailwind.config.js",
     "keywords": [],
     "author": "",
     "license": "ISC"

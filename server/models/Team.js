@@ -6,6 +6,7 @@ const TeamSchema = new mongoose.Schema({
     budget: Number,
     spent: { type: Number, default: 0 },
     color: String,
+    logoText: { type: String, default: '' },
     players: [{ type: mongoose.Schema.Types.ObjectId, ref: 'Player' }]
 });
 

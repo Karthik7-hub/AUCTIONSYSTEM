@@ -11,7 +11,7 @@ const PlayerSchema = new mongoose.Schema({
     isUnsold: { type: Boolean, default: false },
     soldTo: { type: mongoose.Schema.Types.ObjectId, ref: 'Team', default: null },
     soldPrice: { type: Number, default: 0 }
-});
+}, { timestamps: true });
 
 PlayerSchema.index({ auctionId: 1 });
 PlayerSchema.index({ soldTo: 1 });

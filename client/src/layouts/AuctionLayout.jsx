@@ -17,18 +17,28 @@ export default function AuctionLayout() {
     const [liveState, setLiveState] = useState({ currentBid: 0, leadingTeamId: null, currentPlayerId: null, status: 'IDLE' });
     const [isAuthenticated, setIsAuthenticated] = useState(false);
     const [config, setConfig] = useState({ categories: [], roles: [] });
+    const [actualId, setActualId] = useState(null);
 
     useEffect(() => {
         const newSocket = io(API_URL, { transports: ['websocket'] });
         setSocket(newSocket);
-        newSocket.emit('join_auction', auctionId);
 
         const loadData = async () => {
             try {
                 const res = await getAuctionInit(auctionId);
                 setData({ teams: res.data.teams, players: res.data.players });
                 if (res.data.liveState) setLiveState(res.data.liveState);
-                if (res.data.config) setConfig(res.data.config);
+                if (res.data.config) {
+                    setConfig(res.data.config);
+                    setActualId(res.data.config._id);
+                    newSocket.emit('join_auction', res.data.config._id);
+                    
+                    // Auth Check against normalized ID
+                    const idAuth = localStorage.getItem(`admin_auth_${res.data.config._id}`);
+                    if (idAuth === 'true') {
+                        setIsAuthenticated(true);
+                    }
+                }
             } catch (err) { console.error(err); }
         };
         loadData();
@@ -37,8 +47,8 @@ export default function AuctionLayout() {
         newSocket.on('auction_state', (state) => setLiveState(state));
 
         // --- AUTH CHECK ---
-        const storedAuth = localStorage.getItem(`admin_auth_${auctionId}`);
-        if (storedAuth === 'true') {
+        const urlAuth = localStorage.getItem(`admin_auth_${auctionId}`);
+        if (urlAuth === 'true') {
             setIsAuthenticated(true);
             if (location.state?.autoLogin) {
                 setView('admin-setup');
@@ -55,19 +65,21 @@ export default function AuctionLayout() {
         </div>
     );
 
+    const targetAuctionId = actualId || auctionId;
+
     if (view === 'login') {
-        return <Login auctionId={auctionId} setView={setView} setIsAuthenticated={setIsAuthenticated} />;
+        return <Login auctionId={targetAuctionId} setView={setView} setIsAuthenticated={setIsAuthenticated} />;
     }
 
     if (view === 'admin-setup') {
         if (!isAuthenticated) return setView('login');
-        return <SetupDashboard data={data} setView={setView} auctionId={auctionId} onRefresh={() => socket.emit('data_update')} config={config} />;
+        return <SetupDashboard data={data} setView={setView} auctionId={targetAuctionId} onRefresh={() => socket.emit('data_update')} config={config} />;
     }
 
     if (view === 'admin-live') {
         if (!isAuthenticated) return setView('login');
-        return <AuctioneerControls data={data} socket={socket} liveState={liveState} setView={setView} auctionId={auctionId} config={config} />;
+        return <AuctioneerControls data={data} socket={socket} liveState={liveState} setView={setView} auctionId={targetAuctionId} config={config} />;
     }
 
-    return <ViewerScreen data={data} liveState={liveState} setView={setView} config={config} />;
+    return <ViewerScreen data={data} liveState={liveState} setView={setView} auctionId={targetAuctionId} config={config} />;
 }

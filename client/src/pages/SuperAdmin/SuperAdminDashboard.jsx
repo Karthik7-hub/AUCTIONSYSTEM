@@ -42,7 +42,8 @@ export default function SuperAdminDashboard() {
 
     // --- FILTER LOGIC ---
     const filteredAuctions = auctions.filter(auction => {
-        const statusMatch = activeTab === 'active' ? auction.isActive : !auction.isActive;
+        const isAuctionCompleted = auction.status === 'completed' || auction.isActive === false;
+        const statusMatch = activeTab === 'active' ? !isAuctionCompleted : isAuctionCompleted;
         const searchMatch = auction.name.toLowerCase().includes(searchQuery.toLowerCase());
         return statusMatch && searchMatch;
     });
@@ -55,13 +56,31 @@ export default function SuperAdminDashboard() {
         }
     };
 
-    const handleAdminLogin = (auctionId) => {
-        localStorage.setItem(`admin_auth_${auctionId}`, 'true');
-        navigate(`/auction/${auctionId}`, { state: { autoLogin: true } });
+    const handleAdminLogin = (auction) => {
+        const identifier = auction.slug || auction._id;
+        localStorage.setItem(`admin_auth_${auction._id}`, 'true');
+        localStorage.setItem(`admin_auth_${identifier}`, 'true');
+        navigate(`/auction/${identifier}`, { state: { autoLogin: true } });
     };
 
     const toggleStatus = async (auction) => {
-        await updateAuction(auction._id, { ...auction, isActive: !auction.isActive });
+        let nextStatus = 'live';
+        let nextIsActive = true;
+        
+        // Cycle status: draft -> live -> completed -> draft
+        const currentStatus = auction.status || (auction.isActive ? 'live' : 'completed');
+        if (currentStatus === 'draft') {
+            nextStatus = 'live';
+            nextIsActive = true;
+        } else if (currentStatus === 'live') {
+            nextStatus = 'completed';
+            nextIsActive = false;
+        } else {
+            nextStatus = 'draft';
+            nextIsActive = true;
+        }
+
+        await updateAuction(auction._id, { ...auction, status: nextStatus, isActive: nextIsActive });
         fetchAuctions();
     };
 
@@ -69,6 +88,8 @@ export default function SuperAdminDashboard() {
         if (!newAuction.name || !newAuction.accessCode) return;
         const payload = {
             ...newAuction,
+            status: 'draft',
+            isActive: true,
             categories: newAuction.categories.split(',').map(s => s.trim()).filter(s => s),
             roles: newAuction.roles.split(',').map(s => s.trim()).filter(s => s)
         };
@@ -84,6 +105,7 @@ export default function SuperAdminDashboard() {
             name: editingAuction.name,
             accessCode: editingAuction.accessCode,
             isActive: editingAuction.isActive,
+            status: editingAuction.status || 'live',
             categories: Array.isArray(editingAuction.categories)
                 ? editingAuction.categories
                 : editingAuction.categories.split(',').map(s => s.trim()).filter(s => s),
@@ -151,17 +173,23 @@ export default function SuperAdminDashboard() {
                         </div>
                         <div className="input-group">
                             <label className="input-label">Status</label>
-                            <div className="super-edit-modal-btn-row">
+                            <div className="super-edit-modal-btn-row" style={{ display: 'flex', gap: '8px' }}>
                                 <Button
-                                    onClick={() => setEditingAuction({ ...editingAuction, isActive: true })}
-                                    variant={editingAuction.isActive ? 'success' : 'secondary'}
+                                    onClick={() => setEditingAuction({ ...editingAuction, status: 'draft', isActive: true })}
+                                    variant={(editingAuction.status === 'draft' || (!editingAuction.status && editingAuction.isActive)) ? 'info' : 'secondary'}
+                                    style={(editingAuction.status === 'draft') ? { backgroundColor: 'var(--blue-600)', color: '#ffffff' } : null}
                                 >
-                                    Active (Live)
+                                    Draft
                                 </Button>
                                 <Button
-                                    onClick={() => setEditingAuction({ ...editingAuction, isActive: false })}
-                                    variant={!editingAuction.isActive ? 'secondary' : 'secondary'}
-                                    style={!editingAuction.isActive ? { backgroundColor: 'var(--slate-850)', color: '#ffffff' } : null}
+                                    onClick={() => setEditingAuction({ ...editingAuction, status: 'live', isActive: true })}
+                                    variant={(editingAuction.status === 'live') ? 'success' : 'secondary'}
+                                >
+                                    Live
+                                </Button>
+                                <Button
+                                    onClick={() => setEditingAuction({ ...editingAuction, status: 'completed', isActive: false })}
+                                    variant={(editingAuction.status === 'completed' || (!editingAuction.status && !editingAuction.isActive)) ? 'danger' : 'secondary'}
                                 >
                                     Completed
                                 </Button>
@@ -226,15 +254,22 @@ export default function SuperAdminDashboard() {
                         <div key={auction._id} className="super-auction-card">
                             <div className="super-card-header-line">
                                 <div className="super-card-title-row">
-                                    <Badge
-                                        onClick={() => toggleStatus(auction)}
-                                        variant={auction.isActive ? 'success' : 'danger'}
-                                        title="Click to Toggle Status"
-                                        style={{ cursor: 'pointer' }}
-                                    >
-                                        <Power className="w-3 h-3" style={{ marginRight: 'var(--space-1.5)' }} />
-                                        {auction.isActive ? 'Live' : 'Completed'}
-                                    </Badge>
+                                    {(() => {
+                                        const currentStatus = auction.status || (auction.isActive ? 'live' : 'completed');
+                                        const variant = currentStatus === 'draft' ? 'info' : (currentStatus === 'completed' ? 'danger' : 'success');
+                                        const label = currentStatus === 'draft' ? 'Draft' : (currentStatus === 'completed' ? 'Completed' : 'Live');
+                                        return (
+                                            <Badge
+                                                onClick={() => toggleStatus(auction)}
+                                                variant={variant}
+                                                title="Click to Cycle Status (Draft → Live → Completed)"
+                                                style={{ cursor: 'pointer' }}
+                                            >
+                                                <Power className="w-3 h-3" style={{ marginRight: 'var(--space-1.5)' }} />
+                                                {label}
+                                            </Badge>
+                                        );
+                                    })()}
                                     <h2 className="super-auction-card-title">{auction.name}</h2>
                                 </div>
                                 <div className="super-card-badge-row">
@@ -249,7 +284,7 @@ export default function SuperAdminDashboard() {
                             </div>
                             <div className="super-auction-actions">
                                 <Button onClick={() => setEditingAuction(auction)} variant="secondary"><Edit2 className="w-4 h-4" /> Edit</Button>
-                                <Button onClick={() => handleAdminLogin(auction._id)} variant="primary"><ExternalLink className="w-4 h-4" /> Enter</Button>
+                                <Button onClick={() => handleAdminLogin(auction)} variant="primary"><ExternalLink className="w-4 h-4" /> Enter</Button>
                                 <Button onClick={() => handleDelete(auction._id)} variant="danger"><Trash2 className="w-4 h-4" /></Button>
                             </div>
                         </div>

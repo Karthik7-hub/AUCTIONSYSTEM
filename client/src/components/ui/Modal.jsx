@@ -4,24 +4,42 @@ import { X } from 'lucide-react';
 export default function Modal({ isOpen, onClose, title, children, footer, maxWidth = '36rem', headerGlowIcon: GlowIcon, bannerColor }) {
     useEffect(() => {
         if (!isOpen) return;
+        
+        // Prevent background scrolling
+        const originalStyle = window.getComputedStyle(document.body).overflow;
+        document.body.style.overflow = 'hidden';
+        
         const handleEsc = (e) => { if (e.key === 'Escape') onClose(); }
         window.addEventListener('keydown', handleEsc);
-        return () => window.removeEventListener('keydown', handleEsc);
+        
+        return () => {
+            document.body.style.overflow = originalStyle;
+            window.removeEventListener('keydown', handleEsc);
+        };
     }, [isOpen, onClose]);
 
     if (!isOpen) return null;
 
     return (
-        <div className="modal-overlay" role="dialog" aria-modal="true">
-            <div className="modal-container" style={{ '--modal-max-width': maxWidth }}>
-                
+        <div className="modal-overlay" role="dialog" aria-modal="true" onClick={onClose}>
+            <div 
+                className="modal-container" 
+                style={{ '--modal-max-width': maxWidth }}
+                onClick={(e) => e.stopPropagation()}
+            >
                 {bannerColor ? (
-                    <div className="modal-team-banner" style={{ backgroundColor: bannerColor }}>
-                        <button onClick={onClose} className="modal-close-btn" style={{ position: 'absolute', top: '1rem', right: '1rem', backgroundColor: 'rgba(0,0,0,0.2)', color: '#ffffff' }} aria-label="Close">
-                            <X className="w-5 h-5" />
-                        </button>
-                        <div className="modal-banner-header-content">
-                            {title}
+                    <div className="modal-team-banner" style={{ borderBottom: '1px solid var(--border)', padding: 'var(--sp-4) var(--sp-6)' }}>
+                        <div className="modal-banner-header-content" style={{ display: 'flex', width: '100%', justifyContent: 'space-between', alignItems: 'center' }}>
+                            <div className="modal-banner-title-area" style={{ flex: 1 }}>
+                                {title}
+                            </div>
+                            <button 
+                                onClick={onClose} 
+                                className="modal-close-btn" 
+                                aria-label="Close"
+                            >
+                                <X className="w-5 h-5" />
+                            </button>
                         </div>
                     </div>
                 ) : (
@@ -49,3 +67,4 @@ export default function Modal({ isOpen, onClose, title, children, footer, maxWid
         </div>
     );
 }
+

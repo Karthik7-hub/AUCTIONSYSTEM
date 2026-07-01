@@ -16,6 +16,10 @@ export default function LandingPage() {
         getAuctions()
             .then(res => {
                 setAuctions(res.data);
+                const hasActive = res.data.some(a => a.status !== 'completed' && a.isActive !== false);
+                if (!hasActive) {
+                    setActiveTab('completed');
+                }
                 setLoading(false);
             })
             .catch(err => {
@@ -26,8 +30,9 @@ export default function LandingPage() {
 
     // Filter Logic
     const filteredAuctions = auctions.filter(auction => {
-        if (activeTab === 'active') return auction.isActive;
-        if (activeTab === 'completed') return !auction.isActive;
+        const isCompleted = auction.status === 'completed' || auction.isActive === false;
+        if (activeTab === 'active') return !isCompleted;
+        if (activeTab === 'completed') return isCompleted;
         return true;
     });
 
@@ -75,57 +80,57 @@ export default function LandingPage() {
                     <Loader message="Loading Tournaments..." />
                 ) : (
                     <div className="grid grid-cols-1 grid-cols-md-2 grid-cols-lg-3 gap-6">
-                        {filteredAuctions.map(auction => (
-                            <div
-                                key={auction._id}
-                                onClick={() => navigate(`/auction/${auction._id}`)}
-                                className={`card tournament-card ${auction.isActive ? 'card-active' : 'card-inactive'}`}
-                            >
-                                {/* Card Hover Gradient */}
-                                <div className="card-hover-gradient"></div>
-
-                                <div className="card-body">
-                                    <div className="card-header">
-                                        <div className="card-header-icon">
-                                            {auction.isActive
-                                                ? <Trophy className="w-6 h-6 text-yellow-500" />
-                                                : <Archive className="w-6 h-6" />
-                                            }
+                        {filteredAuctions.map(auction => {
+                            const isLive = auction.status !== 'completed' && auction.isActive !== false;
+                            return (
+                                <div
+                                    key={auction._id}
+                                    onClick={() => navigate(`/auction/${auction._id}`)}
+                                    className={`card tournament-card ${isLive ? 'card-active' : 'card-inactive'}`}
+                                >
+                                    <div className="card-body">
+                                        <div className="card-header">
+                                            <div className="card-header-icon">
+                                                {isLive
+                                                    ? <Trophy className="w-6 h-6 text-yellow-500" />
+                                                    : <Archive className="w-6 h-6" />
+                                                }
+                                            </div>
+                                            {isLive ? (
+                                                <span className="tournament-badge tournament-badge-live animate-pulse">
+                                                    LIVE NOW
+                                                </span>
+                                            ) : (
+                                                <span className="tournament-badge tournament-badge-completed">
+                                                    COMPLETED
+                                                </span>
+                                            )}
                                         </div>
-                                        {auction.isActive ? (
-                                            <span className="tournament-badge tournament-badge-live animate-pulse">
-                                                LIVE NOW
-                                            </span>
-                                        ) : (
-                                            <span className="tournament-badge tournament-badge-completed">
-                                                COMPLETED
-                                            </span>
-                                        )}
-                                    </div>
 
-                                    <h3 className="tournament-card-title">
-                                        {auction.name}
-                                    </h3>
+                                        <h3 className="tournament-card-title">
+                                            {auction.name}
+                                        </h3>
 
-                                    <div className="tournament-meta flex-1">
-                                        <div className="tournament-meta-item">
-                                            <Calendar className="w-4 h-4" />
-                                            {new Date(auction.date).toLocaleDateString(undefined, { dateStyle: 'long' })}
+                                        <div className="tournament-meta flex-1">
+                                            <div className="tournament-meta-item">
+                                                <Calendar className="w-4 h-4" />
+                                                {new Date(auction.date).toLocaleDateString(undefined, { dateStyle: 'long' })}
+                                            </div>
+                                            <div className="tournament-meta-item">
+                                                <Users className="w-4 h-4" />
+                                                {isLive ? "Spectator Access Open" : "View Results & Stats"}
+                                            </div>
                                         </div>
-                                        <div className="tournament-meta-item">
-                                            <Users className="w-4 h-4" />
-                                            {auction.isActive ? "Spectator Access Open" : "View Results & Stats"}
-                                        </div>
-                                    </div>
 
-                                    <div className="card-footer">
-                                        <div className={`landing-card-link ${auction.isActive ? 'landing-card-link-active' : 'landing-card-link-completed'}`}>
-                                            {auction.isActive ? "Enter Arena" : "View Archive"} <ArrowRight className="w-4 h-4" />
+                                        <div className="card-footer">
+                                            <div className={`landing-card-link ${isLive ? 'landing-card-link-active' : 'landing-card-link-completed'}`}>
+                                                {isLive ? "Enter Arena" : "View Archive"} <ArrowRight className="w-4 h-4" />
+                                            </div>
                                         </div>
                                     </div>
                                 </div>
-                            </div>
-                        ))}
+                            );
+                        })}
 
                         {filteredAuctions.length === 0 && (
                             <div className="landing-empty-container">

@@ -1,4 +1,4 @@
-require('dotenv').config();
+require('dotenv').config(); // Nodemon watch trigger
 const express = require('express');
 const mongoose = require('mongoose');
 const cors = require('cors');
@@ -66,7 +66,7 @@ app.get('/api/auctions', async (req, res) => {
     try {
         const auctions = await Auction.find()
             .sort({ date: -1 })
-            .select('name date accessCode isActive categories roles') // Fetch only needed fields
+            .select('name date accessCode isActive status categories roles slug') // Fetch only needed fields
             .lean(); // Return plain JS objects (Faster)
         res.json(auctions);
     } catch (err) {
@@ -87,20 +87,31 @@ app.get('/api/init/:auctionId', async (req, res) => {
     try {
         const { auctionId } = req.params;
 
-        // Run these 3 queries at the same time instead of one-by-one
-        const [auction, teams, players] = await Promise.all([
-            Auction.findById(auctionId).select('categories roles').lean(),
-            Team.find({ auctionId }).populate('players').lean(),
-            Player.find({ auctionId }).sort('order').lean()
-        ]);
+        let auction = null;
+        const isValidObjectId = mongoose.Types.ObjectId.isValid(auctionId);
+        if (isValidObjectId) {
+            auction = await Auction.findById(auctionId).select('name accessCode isActive status categories roles slug').lean();
+        }
+
+        if (!auction) {
+            auction = await Auction.findOne({ slug: auctionId }).select('name accessCode isActive status categories roles slug').lean();
+        }
 
         if (!auction) return res.status(404).json({ error: "Auction not found" });
+
+        const actualId = auction._id;
+
+        // Run these parallel queries using the resolved ObjectID
+        const [teams, players] = await Promise.all([
+            Team.find({ auctionId: actualId }).populate('players').lean(),
+            Player.find({ auctionId: actualId }).sort('order').lean()
+        ]);
 
         res.json({
             teams,
             players,
-            liveState: getRoomState(auctionId),
-            config: { categories: auction.categories, roles: auction.roles }
+            liveState: getRoomState(actualId),
+            config: auction
         });
     } catch (err) {
         console.error(err);
@@ -112,7 +123,15 @@ app.get('/api/init/:auctionId', async (req, res) => {
 app.post('/api/verify-admin', async (req, res) => {
     try {
         const { auctionId, password } = req.body;
-        const auction = await Auction.findById(auctionId).select('accessCode').lean();
+        
+        let auction = null;
+        const isValid = mongoose.Types.ObjectId.isValid(auctionId);
+        if (isValid) {
+            auction = await Auction.findById(auctionId).select('accessCode').lean();
+        }
+        if (!auction) {
+            auction = await Auction.findOne({ slug: auctionId }).select('accessCode').lean();
+        }
 
         if (!auction) return res.status(404).json({ success: false });
         if (auction.accessCode === password) return res.json({ success: true });
@@ -132,22 +151,58 @@ app.post('/api/super-admin/login', (req, res) => {
 // 7. Add/Delete Items
 app.post('/api/teams', async (req, res) => {
     try {
-        const team = new Team(req.body);
+        let { auctionId } = req.body;
+        const isValid = mongoose.Types.ObjectId.isValid(auctionId);
+        if (!isValid) {
+            const auction = await Auction.findOne({ slug: auctionId }).select('_id').lean();
+            if (auction) auctionId = auction._id;
+        }
+
+        const team = new Team({ ...req.body, auctionId });
         await team.save();
-        io.to(req.body.auctionId).emit('data_update');
+        io.to(auctionId.toString()).emit('data_update');
         res.json(team);
     } catch (err) { res.status(500).json({ error: err.message }); }
 });
 
 app.post('/api/players', async (req, res) => {
     try {
-        const count = await Player.countDocuments({ auctionId: req.body.auctionId });
-        const player = new Player({ ...req.body, order: count });
+        let { auctionId } = req.body;
+        const isValid = mongoose.Types.ObjectId.isValid(auctionId);
+        if (!isValid) {
+            const auction = await Auction.findOne({ slug: auctionId }).select('_id').lean();
+            if (auction) auctionId = auction._id;
+        }
+
+        const count = await Player.countDocuments({ auctionId });
+        const player = new Player({ ...req.body, auctionId, order: count });
         await player.save();
-        io.to(req.body.auctionId).emit('data_update');
+        io.to(auctionId.toString()).emit('data_update');
         res.json(player);
     } catch (err) { res.status(500).json({ error: err.message }); }
 });
+
+app.put('/api/players/:id', async (req, res) => {
+    try {
+        const player = await Player.findByIdAndUpdate(req.params.id, req.body, { new: true });
+        if (player) {
+            io.to(player.auctionId.toString()).emit('data_update');
+        }
+        res.json(player);
+    } catch (err) { res.status(500).json({ error: err.message }); }
+});
+
+
+app.put('/api/teams/:id', async (req, res) => {
+    try {
+        const team = await Team.findByIdAndUpdate(req.params.id, req.body, { new: true });
+        if (team) {
+            io.to(team.auctionId.toString()).emit('data_update');
+        }
+        res.json(team);
+    } catch (err) { res.status(500).json({ error: err.message }); }
+});
+
 
 app.delete('/api/teams/:id', async (req, res) => {
     try {

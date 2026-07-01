@@ -1,23 +1,32 @@
-/* Global resets and body setups */
+/* ============================================
+   GLOBAL RESETS & BASE STYLES
+   ============================================ */
+
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap');
+
 * {
   box-sizing: border-box;
   margin: 0;
   padding: 0;
 }
 
+html {
+  -webkit-text-size-adjust: 100%;
+  scrollbar-gutter: stable;
+}
+
 body {
-  margin: 0;
-  padding: 0;
   font-family: var(--font-sans);
-  background-color: var(--bg-light);
-  color: var(--text-primary-light);
+  background-color: var(--bg-base);
+  color: var(--text-primary);
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
   overflow-x: hidden;
-  transition: background-color 0.2s ease, color 0.2s ease;
+  font-size: var(--text-body);
+  line-height: 1.6;
 }
 
-/* Base resets */
+/* Base element resets */
 button, select, input, textarea {
   font-family: inherit;
   font-size: inherit;
@@ -27,54 +36,55 @@ button, select, input, textarea {
   outline: none;
 }
 
-button {
-  cursor: pointer;
-}
+button { cursor: pointer; }
+a { text-decoration: none; color: inherit; }
 
-a {
-  text-decoration: none;
-  color: inherit;
-}
-
-/* Typography styles */
 h1, h2, h3, h4, h5, h6 {
   font-weight: var(--weight-bold);
-  line-height: 1.2;
+  line-height: 1.25;
+  color: var(--text-primary);
 }
 
-/* Scrollbar customization */
-*::-webkit-scrollbar {
-  width: 8px;
-  height: 8px;
+/* Unified scrollbar */
+* {
+  scrollbar-width: thin;
+  scrollbar-color: rgba(255,255,255,0.12) transparent;
 }
 
-*::-webkit-scrollbar-track {
-  background: transparent;
-}
-
+*::-webkit-scrollbar { width: 6px; height: 6px; }
+*::-webkit-scrollbar-track { background: transparent; }
 *::-webkit-scrollbar-thumb {
-  background: var(--slate-300);
+  background: rgba(255,255,255,0.1);
   border-radius: var(--radius-full);
 }
-
-.theme-dark *::-webkit-scrollbar-thumb {
-  background: var(--slate-700);
-}
-
 *::-webkit-scrollbar-thumb:hover {
-  background: var(--slate-400);
+  background: rgba(255,255,255,0.18);
 }
 
-.theme-dark *::-webkit-scrollbar-thumb:hover {
-  background: var(--slate-600);
+.no-scrollbar::-webkit-scrollbar { display: none !important; }
+.no-scrollbar { -ms-overflow-style: none !important; scrollbar-width: none !important; }
+
+/* ============================================
+   THEME OVERRIDES — force unified dark
+   ============================================ */
+
+/* Everything uses the same dark theme regardless of .theme-light / .theme-dark class */
+.theme-light,
+.theme-dark {
+  background-color: var(--bg-base);
+  color: var(--text-primary);
 }
 
-/* Scrollbar Hide Helper */
-.no-scrollbar::-webkit-scrollbar {
-  display: none !important;
+/* ============================================
+   RESPONSIVE UTILITIES
+   ============================================ */
+@media (max-width: 767px) {
+  .desktop-only { display: none !important; }
+  .mobile-only { display: block !important; }
 }
 
-.no-scrollbar {
-  -ms-overflow-style: none !important;
-  scrollbar-width: none !important;
+@media (min-width: 768px) {
+  .desktop-only { display: block !important; }
+  .mobile-only { display: none !important; }
 }
+

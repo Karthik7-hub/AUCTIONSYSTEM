@@ -23,7 +23,7 @@ export default function Login({ auctionId, setView }) {
     };
 
     return (
-        <div className="super-login-wrapper theme-dark">
+        <div className="super-login-wrapper theme-light">
             <div className="super-login-card">
                 <div className="super-login-border-top"></div>
                 <div className="text-center login-margin-bottom">

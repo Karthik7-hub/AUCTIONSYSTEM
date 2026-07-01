@@ -46,7 +46,7 @@ export default function SuperAdminLogin() {
                         required
                     />
                     {error && <p className="form-error-msg">{error}</p>}
-                    <Button type="submit" variant="danger" className="btn-w-full" style={{ background: 'linear-gradient(to right, var(--red-600), var(--orange-600))' }}>
+                    <Button type="submit" variant="danger" className="btn-w-full">
                         <Zap className="w-5 h-5" /> Access Dashboard
                     </Button>
                 </form>

@@ -5,6 +5,7 @@ const AuctionSchema = new mongoose.Schema({
     date: { type: Date, default: Date.now },
     accessCode: { type: String, required: true },
     isActive: { type: Boolean, default: true },
+    status: { type: String, enum: ['draft', 'live', 'completed'], default: 'draft' },
 
     // NEW FIELDS (With defaults for safety)
     categories: {
@@ -14,7 +15,44 @@ const AuctionSchema = new mongoose.Schema({
     roles: {
         type: [String],
         default: ['Batsman', 'Bowler', 'All Rounder', 'Wicket Keeper']
+    },
+    slug: {
+        type: String,
+        unique: true
     }
+});
+
+// Function to convert name to URL-friendly slug
+const slugify = (text) => {
+    return text
+        .toString()
+        .toLowerCase()
+        .trim()
+        .replace(/\s+/g, '-')             // Replace spaces with -
+        .replace(/[^\w\-]+/g, '')           // Remove all non-word chars
+        .replace(/\-\-+/g, '-');            // Replace multiple - with single -
+};
+
+AuctionSchema.pre('save', async function(next) {
+    if (!this.isModified('name') && this.slug) {
+        return next();
+    }
+
+    let baseSlug = slugify(this.name || 'tournament');
+    let uniqueSlug = baseSlug;
+    let counter = 1;
+
+    while (true) {
+        const existing = await this.constructor.findOne({ slug: uniqueSlug, _id: { $ne: this._id } });
+        if (!existing) {
+            break;
+        }
+        uniqueSlug = `${baseSlug}-${counter}`;
+        counter++;
+    }
+
+    this.slug = uniqueSlug;
+    next();
 });
 
 AuctionSchema.index({ date: -1 });

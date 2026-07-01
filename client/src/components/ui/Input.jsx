@@ -1,6 +1,6 @@
 import React from 'react';
 
-export default function Input({ type = 'text', value, onChange, placeholder, className = '', style, icon: Icon, required, min, label }) {
+export default function Input({ type = 'text', value, onChange, placeholder, className = '', style, icon: Icon, required, min, label, ...props }) {
     return (
         <div className="input-group" style={style}>
             {label && <label className="input-label">{label}</label>}
@@ -15,6 +15,7 @@ export default function Input({ type = 'text', value, onChange, placeholder, cla
                     min={min}
                     className={`input-field ${className}`}
                     style={Icon ? { paddingLeft: 'var(--space-12)' } : null}
+                    {...props}
                 />
             </div>
         </div>

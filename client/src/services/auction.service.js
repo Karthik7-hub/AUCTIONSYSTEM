@@ -18,7 +18,7 @@ export const deleteAuction = (id) => {
 };
 
 export const getAuctionInit = (auctionId) => {
-    return http.get(`/api/init/${auctionId}`);
+    return http.get(`/api/init/${auctionId}?t=${Date.now()}`);
 };
 
 // Teams CRUD
@@ -30,6 +30,10 @@ export const deleteTeam = (id) => {
     return http.delete(`/api/teams/${id}`);
 };
 
+export const updateTeam = (id, payload) => {
+    return http.put(`/api/teams/${id}`, payload);
+};
+
 // Players CRUD
 export const createPlayer = (payload) => {
     return http.post('/api/players', payload);
@@ -38,3 +42,8 @@ export const createPlayer = (payload) => {
 export const deletePlayer = (id) => {
     return http.delete(`/api/players/${id}`);
 };
+
+export const updatePlayer = (id, payload) => {
+    return http.put(`/api/players/${id}`, payload);
+};
+

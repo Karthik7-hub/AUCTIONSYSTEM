@@ -16,7 +16,7 @@ export default function LandingPage() {
         getAuctions()
             .then(res => {
                 setAuctions(res.data);
-                const hasActive = res.data.some(a => a.status !== 'completed' && a.isActive !== false);
+                const hasActive = res.data.some(a => a.status !== 'completed' && a.status !== 'draft' && a.isActive !== false);
                 if (!hasActive) {
                     setActiveTab('completed');
                 }
@@ -30,6 +30,9 @@ export default function LandingPage() {
 
     // Filter Logic
     const filteredAuctions = auctions.filter(auction => {
+        // Completely hide draft tournaments from landing page visibility
+        if (auction.status === 'draft') return false;
+
         const isCompleted = auction.status === 'completed' || auction.isActive === false;
         if (activeTab === 'active') return !isCompleted;
         if (activeTab === 'completed') return isCompleted;
@@ -85,7 +88,7 @@ export default function LandingPage() {
                             return (
                                 <div
                                     key={auction._id}
-                                    onClick={() => navigate(`/auction/${auction._id}`)}
+                                    onClick={() => navigate(`/auction/${auction.slug || auction._id}`)}
                                     className={`card tournament-card ${isLive ? 'card-active' : 'card-inactive'}`}
                                 >
                                     <div className="card-body">

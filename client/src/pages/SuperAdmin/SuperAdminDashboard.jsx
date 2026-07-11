@@ -6,10 +6,13 @@ import {
     Clock, Archive
 } from 'lucide-react';
 import { getAuctions, createAuction, updateAuction, deleteAuction } from '@services/auction.service';
+import { verifyStoredSuperAdminToken, clearSuperAdminTokens } from '@services/auth.service';
 import Button from '@components/ui/Button';
 import Input from '@components/ui/Input';
 import Modal from '@components/ui/Modal';
 import Badge from '@components/ui/Badge';
+import ConfirmDialog from '@components/ui/ConfirmDialog';
+import AlertDialog from '@components/ui/AlertDialog';
 
 export default function SuperAdminDashboard() {
     const navigate = useNavigate();
@@ -25,12 +28,29 @@ export default function SuperAdminDashboard() {
 
     // --- FORM STATES ---
     const [newAuction, setNewAuction] = useState({
-        name: '', accessCode: '', categories: 'Marquee, Set 1, Set 2', roles: 'Batsman, Bowler'
+        name: '', accessCode: '', categories: 'Marquee, Set 1, Set 2, Set 3, Set 4', roles: 'Batsman, Bowler, All Rounder, Wicket Keeper'
     });
 
+    // Custom Modal Dialog State
+    const [confirmDialog, setConfirmDialog] = useState({ isOpen: false, title: '', message: '', type: 'info', confirmText: 'Confirm', onConfirm: () => {} });
+    const [alertDialog, setAlertDialog] = useState({ isOpen: false, title: '', message: '', type: 'info' });
+
+    const showConfirm = (title, message, type, confirmText, onConfirm) => {
+        setConfirmDialog({ isOpen: true, title, message, type, confirmText, onConfirm });
+    };
+
+    const showAlert = (title, message, type = 'info') => {
+        setAlertDialog({ isOpen: true, title, message, type });
+    };
+
     useEffect(() => {
-        if (!localStorage.getItem('super_admin_token')) navigate('/super-admin');
-        fetchAuctions();
+        // Verify JWT with server — not trusting localStorage boolean
+        verifyStoredSuperAdminToken()
+            .then(() => fetchAuctions())
+            .catch(() => {
+                clearSuperAdminTokens();
+                navigate('/super-admin');
+            });
     }, [navigate]);
 
     const fetchAuctions = async () => {
@@ -49,11 +69,22 @@ export default function SuperAdminDashboard() {
     });
 
     // --- ACTIONS ---
-    const handleDelete = async (id) => {
-        if (window.confirm("⚠️ DANGER: This will permanently delete the Tournament, Teams, and Players. Continue?")) {
-            await deleteAuction(id);
-            fetchAuctions();
-        }
+    const handleDelete = (id) => {
+        showConfirm(
+            "Delete Tournament",
+            "⚠️ DANGER: This will permanently delete the Tournament, Teams, and Players. Are you sure you want to continue?",
+            "danger",
+            "Delete Tournament",
+            async () => {
+                try {
+                    await deleteAuction(id);
+                    fetchAuctions();
+                } catch (err) {
+                    console.error("Error deleting tournament:", err);
+                    showAlert("Error", "Failed to delete tournament.", "error");
+                }
+            }
+        );
     };
 
     const handleAdminLogin = (auction) => {
@@ -95,7 +126,7 @@ export default function SuperAdminDashboard() {
         };
         await createAuction(payload);
         setShowCreate(false);
-        setNewAuction({ name: '', accessCode: '', categories: 'Marquee, Set 1, Set 2', roles: 'Batsman, Bowler' });
+        setNewAuction({ name: '', accessCode: '', categories: 'Marquee, Set 1, Set 2, Set 3, Set 4', roles: 'Batsman, Bowler, All Rounder, Wicket Keeper' });
         fetchAuctions();
     };
 
@@ -142,11 +173,11 @@ export default function SuperAdminDashboard() {
                     </div>
                     <div className="input-group">
                         <label className="input-label">Categories (Comma Separated)</label>
-                        <textarea className="input-field" value={newAuction.categories} onChange={e => setNewAuction({ ...newAuction, categories: e.target.value })} />
+                        <textarea className="input-field" value={newAuction.categories} onChange={e => setNewAuction({ ...newAuction, categories: e.target.value })} placeholder="e.g. Marquee, Set 1, Set 2, Set 3, Set 4" />
                     </div>
                     <div className="input-group">
                         <label className="input-label">Roles (Comma Separated)</label>
-                        <textarea className="input-field" value={newAuction.roles} onChange={e => setNewAuction({ ...newAuction, roles: e.target.value })} />
+                        <textarea className="input-field" value={newAuction.roles} onChange={e => setNewAuction({ ...newAuction, roles: e.target.value })} placeholder="e.g. Batsman, Bowler, All Rounder, Wicket Keeper" />
                     </div>
                 </div>
             </Modal>
@@ -217,7 +248,7 @@ export default function SuperAdminDashboard() {
                     </div>
                     <div className="super-header-btn-row">
                         <Button onClick={() => setShowCreate(true)} variant="primary"><Plus className="w-5 h-5" /> New Tournament</Button>
-                        <Button onClick={() => { localStorage.removeItem('super_admin_token'); navigate('/'); }} variant="secondary"><LogOut className="w-5 h-5" /></Button>
+                        <Button onClick={() => { clearSuperAdminTokens(); navigate('/'); }} variant="secondary"><LogOut className="w-5 h-5" /></Button>
                     </div>
                 </div>
 
@@ -297,6 +328,25 @@ export default function SuperAdminDashboard() {
                     )}
                 </div>
             </div>
+
+            {/* Custom Dialog Modals */}
+            <ConfirmDialog
+                isOpen={confirmDialog.isOpen}
+                onClose={() => setConfirmDialog(prev => ({ ...prev, isOpen: false }))}
+                onConfirm={confirmDialog.onConfirm}
+                title={confirmDialog.title}
+                message={confirmDialog.message}
+                confirmText={confirmDialog.confirmText}
+                type={confirmDialog.type}
+            />
+
+            <AlertDialog
+                isOpen={alertDialog.isOpen}
+                onClose={() => setAlertDialog(prev => ({ ...prev, isOpen: false }))}
+                title={alertDialog.title}
+                message={alertDialog.message}
+                type={alertDialog.type}
+            />
         </div>
     );
 }

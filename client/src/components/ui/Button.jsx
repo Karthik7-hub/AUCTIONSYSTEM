@@ -1,6 +1,6 @@
 import React from 'react';
 
-export default function Button({ children, variant = 'primary', type = 'button', onClick, className = '', disabled, style, title, loading }) {
+function Button({ children, variant = 'primary', type = 'button', onClick, className = '', disabled, style, title, loading }) {
     const isCurrentlyDisabled = disabled || loading;
 
     const variantClass = {
@@ -42,3 +42,5 @@ export default function Button({ children, variant = 'primary', type = 'button',
         </button>
     );
 }
+
+export default React.memo(Button);

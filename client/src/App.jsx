@@ -1,5 +1,5 @@
 import React from 'react';
-import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
+import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
 import LandingPage from '@pages/Landing/LandingPage';
 import AuctionLayout from '@layouts/AuctionLayout';
 import SuperAdminLogin from '@pages/SuperAdmin/SuperAdminLogin';
@@ -18,6 +18,9 @@ function App() {
 
                 {/* Specific Tournament Room */}
                 <Route path="/auction/:auctionId/*" element={<AuctionLayout />} />
+
+                {/* Catch-all: redirect any unmatched path (e.g. /auction, /random) to landing */}
+                <Route path="*" element={<Navigate to="/" replace />} />
             </Routes>
         </Router>
     );

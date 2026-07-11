@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useMemo } from 'react';
+import { useNavigate } from 'react-router-dom';
 import {
     Users, UserPlus, Play, LogOut, Trophy, Trash2, Shield,
     LayoutGrid, Search, Clock, Crown, Wallet,
@@ -6,11 +7,14 @@ import {
     MoreVertical, ArrowRight, TrendingUp, Lock
 } from 'lucide-react';
 import { createTeam, deleteTeam, updateTeam, createPlayer, deletePlayer, updatePlayer } from '@services/auction.service';
+import { clearTokens } from '@services/auth.service';
 import Button from '@components/ui/Button';
 import Input from '@components/ui/Input';
 import Modal from '@components/ui/Modal';
 import Badge from '@components/ui/Badge';
 import Loader from '@components/ui/Loader';
+import ConfirmDialog from '@components/ui/ConfirmDialog';
+import AlertDialog from '@components/ui/AlertDialog';
 
 const getContrastColor = (hexColor) => {
     if (!hexColor || hexColor.charAt(0) !== '#') return '#ffffff';
@@ -21,7 +25,8 @@ const getContrastColor = (hexColor) => {
     return (yiq >= 128) ? '#000000' : '#ffffff';
 };
 
-export default function SetupDashboard({ data, setView, auctionId, onRefresh, config }) {
+export default function SetupDashboard({ data, auctionId, onRefresh, config }) {
+    const navigate = useNavigate();
 
     // --- 1. DYNAMIC CONFIGURATION ---
     const categories = config?.categories?.length ? config.categories : ['Marquee', 'Set 1', 'Set 2', 'Set 3', 'Set 4'];
@@ -48,6 +53,18 @@ export default function SetupDashboard({ data, setView, auctionId, onRefresh, co
 
     const [editingPlayer, setEditingPlayer] = useState(null);
     const [selectedTeam, setSelectedTeam] = useState(null);
+
+    // Custom Modal Dialog State
+    const [confirmDialog, setConfirmDialog] = useState({ isOpen: false, title: '', message: '', type: 'info', confirmText: 'Confirm', onConfirm: () => {} });
+    const [alertDialog, setAlertDialog] = useState({ isOpen: false, title: '', message: '', type: 'info' });
+
+    const showConfirm = (title, message, type, confirmText, onConfirm) => {
+        setConfirmDialog({ isOpen: true, title, message, type, confirmText, onConfirm });
+    };
+
+    const showAlert = (title, message, type = 'info') => {
+        setAlertDialog({ isOpen: true, title, message, type });
+    };
 
     // Syncing config properties cleanly
     useEffect(() => {
@@ -122,7 +139,7 @@ export default function SetupDashboard({ data, setView, auctionId, onRefresh, co
             if (onRefresh) onRefresh();
         } catch (error) {
             console.error("Error adding team:", error);
-            alert("Failed to add team.");
+            showAlert("Error", "Failed to add team.", "error");
         } finally {
             setIsAddingTeam(false);
         }
@@ -130,14 +147,21 @@ export default function SetupDashboard({ data, setView, auctionId, onRefresh, co
 
     const handleDeleteTeam = async (e, id) => {
         e.stopPropagation();
-        if (window.confirm('Delete this team?')) {
-            try {
-                await deleteTeam(id);
-                if (onRefresh) onRefresh();
-            } catch (error) {
-                console.error("Error deleting team:", error);
+        showConfirm(
+            "Delete Team",
+            "Are you sure you want to delete this team? This action cannot be undone.",
+            "danger",
+            "Delete Team",
+            async () => {
+                try {
+                    await deleteTeam(id);
+                    if (onRefresh) onRefresh();
+                } catch (error) {
+                    console.error("Error deleting team:", error);
+                    showAlert("Error", "Failed to delete team.", "error");
+                }
             }
-        }
+        );
     };
 
     const handleSaveTeamEdit = async () => {
@@ -149,7 +173,7 @@ export default function SetupDashboard({ data, setView, auctionId, onRefresh, co
             if (onRefresh) onRefresh();
         } catch (error) {
             console.error("Error saving team edits:", error);
-            alert("Failed to update team details.");
+            showAlert("Error", "Failed to update team details.", "error");
         }
     };
 
@@ -167,7 +191,7 @@ export default function SetupDashboard({ data, setView, auctionId, onRefresh, co
                 if (onRefresh) onRefresh();
             } catch (error) {
                 console.error("Error saving player:", error);
-                alert("Failed to update player.");
+                showAlert("Error", "Failed to update player.", "error");
             } finally {
                 setIsAddingPlayer(false);
             }
@@ -183,7 +207,7 @@ export default function SetupDashboard({ data, setView, auctionId, onRefresh, co
                 if (onRefresh) onRefresh();
             } catch (error) {
                 console.error("Error adding player:", error);
-                alert("Failed to add player.");
+                showAlert("Error", "Failed to add player.", "error");
             } finally {
                 setIsAddingPlayer(false);
             }
@@ -192,15 +216,21 @@ export default function SetupDashboard({ data, setView, auctionId, onRefresh, co
 
 
     const handleDeletePlayer = async (id) => {
-        if (window.confirm('Are you sure you want to delete this player?')) {
-            try {
-                await deletePlayer(id);
-                if (onRefresh) onRefresh();
-            } catch (error) {
-                console.error("Error deleting player:", error);
-                alert("Error deleting player");
+        showConfirm(
+            "Delete Player",
+            "Are you sure you want to delete this player? This will remove them from the tournament.",
+            "danger",
+            "Delete Player",
+            async () => {
+                try {
+                    await deletePlayer(id);
+                    if (onRefresh) onRefresh();
+                } catch (error) {
+                    console.error("Error deleting player:", error);
+                    showAlert("Error", "Error deleting player", "error");
+                }
             }
-        }
+        );
     };
 
     return (
@@ -594,7 +624,7 @@ export default function SetupDashboard({ data, setView, auctionId, onRefresh, co
                                             </svg>
                                             <div style={{ fontSize: 'var(--text-secondary)', fontWeight: 'bold', color: 'var(--text-primary)' }}>No players acquired yet.</div>
                                             <div style={{ fontSize: '11px', color: 'var(--text-muted)' }}>Players purchased during the auction will appear here.</div>
-                                            <Button onClick={() => { setView('admin-live'); setSelectedTeam(null); }} variant="primary" style={{ padding: 'var(--sp-2) var(--sp-4)', fontSize: '11px', marginTop: 'var(--sp-2)' }}>
+                                            <Button onClick={() => { navigate(`/auction/${config?.slug}/live`); setSelectedTeam(null); }} variant="primary" style={{ padding: 'var(--sp-2) var(--sp-4)', fontSize: '11px', marginTop: 'var(--sp-2)' }}>
                                                 Go to Auction
                                             </Button>
                                         </div>
@@ -655,11 +685,11 @@ export default function SetupDashboard({ data, setView, auctionId, onRefresh, co
 
                 <div className="setup-header-actions">
                     {!isCompleted && (
-                        <Button onClick={() => setView('admin-live')} variant="success" className="desktop-only">
+                        <Button onClick={() => navigate(`/auction/${config?.slug}/live`)} variant="success" className="desktop-only">
                             <Play className="w-4 h-4" /> Launch Console
                         </Button>
                     )}
-                    <Button onClick={() => { localStorage.removeItem(`admin_auth_${auctionId}`); setView('viewer'); }} variant="secondary">
+                    <Button onClick={() => { clearTokens(auctionId); navigate(`/auction/${config?.slug}`); }} variant="secondary">
                         <LogOut className="w-4 h-4" /> Logout
                     </Button>
                 </div>
@@ -723,7 +753,7 @@ export default function SetupDashboard({ data, setView, auctionId, onRefresh, co
                                                 Tournament Completed
                                             </div>
                                         ) : (
-                                            <Button onClick={() => setView('admin-live')} variant="success" style={{ padding: 'var(--sp-3)', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 'var(--sp-2)' }}>
+                                            <Button onClick={() => navigate(`/auction/${config?.slug}/live`)} variant="success" style={{ padding: 'var(--sp-3)', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 'var(--sp-2)' }}>
                                                 <Play className="w-5 h-5" /> Launch Live Console
                                             </Button>
                                         )}
@@ -1486,6 +1516,25 @@ export default function SetupDashboard({ data, setView, auctionId, onRefresh, co
                 ))}
             </div>
 
+            {/* Custom Modal Confirmation Dialog */}
+            <ConfirmDialog 
+                isOpen={confirmDialog.isOpen}
+                onClose={() => setConfirmDialog(prev => ({ ...prev, isOpen: false }))}
+                onConfirm={confirmDialog.onConfirm}
+                title={confirmDialog.title}
+                message={confirmDialog.message}
+                confirmText={confirmDialog.confirmText}
+                type={confirmDialog.type}
+            />
+
+            {/* Custom Modal Notification Alert */}
+            <AlertDialog 
+                isOpen={alertDialog.isOpen}
+                onClose={() => setAlertDialog(prev => ({ ...prev, isOpen: false }))}
+                title={alertDialog.title}
+                message={alertDialog.message}
+                type={alertDialog.type}
+            />
         </div>
     );
 }

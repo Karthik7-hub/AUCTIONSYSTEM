@@ -43,4 +43,11 @@
     border-bottom: none;
   }
   .modal-stat-col:last-child { border-right: none; }
+  
+  .modal-body {
+    padding: var(--sp-4) !important;
+  }
+  .modal-footer {
+    padding: var(--sp-3) var(--sp-4) !important;
+  }
 }

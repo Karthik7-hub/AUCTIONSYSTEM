@@ -13,8 +13,8 @@
   align-items: center;
   justify-content: center;
   gap: var(--sp-2);
-  height: 36px;
-  padding: 0 var(--sp-4);
+  height: 48px;
+  padding: 0 var(--sp-5);
   border-radius: var(--radius-lg);
   font-weight: var(--weight-semibold);
   font-size: var(--text-secondary);
@@ -26,6 +26,17 @@
   line-height: 1;
   position: relative;
   overflow: hidden;
+}
+
+/* Large CTA buttons — modal footers, primary actions */
+.btn-lg {
+  height: 56px !important;
+  padding: 0 var(--sp-7) !important;
+  font-size: var(--text-secondary) !important;
+  font-weight: 800 !important;
+  border-radius: var(--radius-xl) !important;
+  letter-spacing: 0.03em !important;
+  text-transform: uppercase !important;
 }
 
 .btn:active { transform: scale(0.97); }

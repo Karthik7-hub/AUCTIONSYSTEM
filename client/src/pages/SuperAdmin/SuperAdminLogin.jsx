@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { ShieldCheck, Lock, Zap } from 'lucide-react';
-import { verifySuperAdminPassword } from '@services/auth.service';
+import { verifySuperAdminPassword, setSuperAdminTokens } from '@services/auth.service';
 import Button from '@components/ui/Button';
 import Input from '@components/ui/Input';
 
@@ -9,30 +9,30 @@ export default function SuperAdminLogin() {
     const navigate = useNavigate();
     const [password, setPassword] = useState('');
     const [error, setError] = useState('');
+    const [isLoading, setIsLoading] = useState(false);
 
     const handleLogin = async (e) => {
         e.preventDefault();
+        setIsLoading(true);
         try {
             const res = await verifySuperAdminPassword(password);
             if (res.data.success) {
-                localStorage.setItem('super_admin_token', 'true');
+                // Store JWT tokens — NOT a boolean flag
+                setSuperAdminTokens(res.data.accessToken, res.data.refreshToken);
                 navigate('/super-admin/dashboard');
             }
         } catch (err) {
             setError('Access Denied');
+        } finally {
+            setIsLoading(false);
         }
     };
 
     return (
         <div className="super-login-wrapper theme-dark">
             <div className="super-login-card">
-                <div className="super-login-border-top"></div>
-
                 <div className="text-center login-margin-bottom">
-                    <div className="super-login-logo super-logo-text-red">
-                        <ShieldCheck className="w-8 h-8" />
-                    </div>
-                    <h1 className="super-login-title">Super Admin</h1>
+                    <h1 className="super-login-title" style={{ fontSize: 'var(--text-card-title, 24px)' }}>Super Admin</h1>
                     <p className="super-login-subtitle">Platform Control Center</p>
                 </div>
 
@@ -46,8 +46,8 @@ export default function SuperAdminLogin() {
                         required
                     />
                     {error && <p className="form-error-msg">{error}</p>}
-                    <Button type="submit" variant="danger" className="btn-w-full">
-                        <Zap className="w-5 h-5" /> Access Dashboard
+                    <Button type="submit" variant="danger" className="btn-w-full" disabled={isLoading}>
+                        <Zap className="w-5 h-5" /> {isLoading ? 'Verifying...' : 'Access Dashboard'}
                     </Button>
                 </form>
             </div>

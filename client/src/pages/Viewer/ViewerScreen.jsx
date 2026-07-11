@@ -1,4 +1,5 @@
 import React, { useState, useMemo, useEffect, useRef, useCallback } from 'react';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import confetti from 'canvas-confetti';
 import {
     Trophy, Users, List, Gavel, DollarSign, TrendingUp,
@@ -12,9 +13,9 @@ import Modal from '@components/ui/Modal';
 
 // --- ASSETS & CONSTANTS ---
 const SOUND_URLS = {
-    sold: 'https://assets.mixkit.co/active_storage/sfx/2000/2000-preview.mp3',
-    kaChing: 'https://assets.mixkit.co/active_storage/sfx/2013/2013-preview.mp3',
-    bid: 'https://assets.mixkit.co/active_storage/sfx/2568/2568-preview.mp3',
+    sold: '/sounds/sold.mp3',
+    kaChing: '/sounds/kaChing.mp3',
+    bid: '/sounds/bid.mp3',
 };
 
 const ROLE_ICONS = {
@@ -34,18 +35,22 @@ const getContrastColor = (hexColor) => {
     return (yiq >= 128) ? '#000000' : '#ffffff';
 };
 
-export default function ViewerScreen({ data, liveState, setView, config }) {
+export default function ViewerScreen({ data, liveState, auctionId, config, isAuthenticated }) {
+    const navigate = useNavigate();
+    const [searchParams, setSearchParams] = useSearchParams();
     // --- STATE ---
-    const [activeTab, setActiveTab] = useState('live');
+    const activeTab = searchParams.get('tab') || 'live';
+    const setActiveTab = (tab) => setSearchParams({ tab }, { replace: true });
     const [viewStatus, setViewStatus] = useState('OPEN');
     const [selectedCategory, setSelectedCategory] = useState('All');
     const [selectedTeam, setSelectedTeam] = useState(null);
     const [feedSort, setFeedSort] = useState('recent');
     const [isSortMenuOpen, setIsSortMenuOpen] = useState(false);
+    const [historyPlayer, setHistoryPlayer] = useState(null);
 
     // --- REFS (State Tracking) ---
     const prevStatusRef = useRef(liveState?.status);
-    const prevBidRef = useRef(liveState?.currentBid);
+    const prevHistoryLengthRef = useRef(liveState?.bidHistory?.length || 0);
     const lastCelebrationRef = useRef(0);
     const audioUnlockedRef = useRef(false);
     const audioInstancesRef = useRef({});
@@ -94,21 +99,36 @@ export default function ViewerScreen({ data, liveState, setView, config }) {
 
         Object.values(audioInstancesRef.current).forEach(audio => {
             audio.volume = 0;
-            audio.play().catch(() => { });
-            audio.pause();
-            audio.currentTime = 0;
-            audio.volume = 0.5; // Reset volume
+            audio.load(); // Force network load
+            const playPromise = audio.play();
+            if (playPromise !== undefined) {
+                playPromise.then(() => {
+                    audio.pause();
+                    audio.currentTime = 0;
+                    audio.volume = 0.5; // Reset volume
+                    audioUnlockedRef.current = true; // Mark as successfully unlocked
+                }).catch(err => {
+                    console.log("Audio unlock play failed:", err);
+                    audio.volume = 0.5; // Reset volume even on failure so it can play later
+                });
+            } else {
+                audio.pause();
+                audio.currentTime = 0;
+                audio.volume = 0.5;
+                audioUnlockedRef.current = true;
+            }
         });
-        audioUnlockedRef.current = true;
     }, []);
 
-    // Unlock on first interaction
+    // Unlock on first interaction (click/touch/keypress)
     useEffect(() => {
         const handleInteraction = () => unlockAudio();
         window.addEventListener('click', handleInteraction);
+        window.addEventListener('touchstart', handleInteraction);
         window.addEventListener('keydown', handleInteraction);
         return () => {
             window.removeEventListener('click', handleInteraction);
+            window.removeEventListener('touchstart', handleInteraction);
             window.removeEventListener('keydown', handleInteraction);
         };
     }, [unlockAudio]);
@@ -141,17 +161,19 @@ export default function ViewerScreen({ data, liveState, setView, config }) {
 
     useEffect(() => {
         const currentStatus = liveState?.status;
-        const currentBid = liveState?.currentBid;
+        const currentHistoryLength = liveState?.bidHistory?.length || 0;
 
         if (currentStatus === 'SOLD' && prevStatusRef.current !== 'SOLD') {
             triggerCelebration();
         }
-        if (currentStatus === 'ACTIVE' && currentBid > prevBidRef.current && prevBidRef.current > 0) {
+        
+        // Play sound if a new bid entry is appended to the history
+        if (currentStatus === 'ACTIVE' && currentHistoryLength > prevHistoryLengthRef.current) {
             playSound('bid');
         }
 
         prevStatusRef.current = currentStatus;
-        prevBidRef.current = currentBid;
+        prevHistoryLengthRef.current = currentHistoryLength;
     }, [liveState, playSound, triggerCelebration]);
 
     if (!data || !data.players) return (
@@ -247,14 +269,11 @@ export default function ViewerScreen({ data, liveState, setView, config }) {
                         <NavButton active={activeTab === 'players'} onClick={() => setActiveTab('players')} icon={List} label="Players" />
                         <NavButton active={activeTab === 'sold'} onClick={() => setActiveTab('sold')} icon={DollarSign} label="Feed" />
                     </nav>
-                    <Button onClick={() => setView('login')} variant="secondary" style={{ padding: 'var(--space-1.5) var(--space-3)', fontSize: 'var(--text-xs)' }}>
-                        Admin Login
-                    </Button>
                 </div>
             </header>
 
             {/* MAIN CONTENT AREA */}
-            <main className="viewer-main-content">
+            <main className={`viewer-main-content${activeTab === 'live' && !isCompleted ? ' live-tab-active' : ''}`}>
                 <div className="container viewer-main-content-container">
 
                     {/* LIVE TAB */}
@@ -546,7 +565,7 @@ export default function ViewerScreen({ data, liveState, setView, config }) {
                                 {sortedFeedPlayers.map(p => {
                                     const team = teamMap.get(p.soldTo);
                                     return (
-                                        <div key={p._id} className="viewer-feed-row tr-hover">
+                                        <div key={p._id} className="viewer-feed-row tr-hover" onClick={() => setHistoryPlayer(p)} style={{ cursor: 'pointer' }}>
                                             <div className="viewer-feed-row-inner">
                                                 <div className="viewer-feed-avatar">{p.name.charAt(0)}</div>
                                                 <div><div className="viewer-team-card-player-name">{p.name}</div><div style={{ fontSize: '10px', color: 'var(--text-muted-dark)' }}>{p.role}</div></div>
@@ -585,11 +604,50 @@ export default function ViewerScreen({ data, liveState, setView, config }) {
                 <MobileNavButton active={activeTab === 'teams'} onClick={() => setActiveTab('teams')} icon={Users} label="Teams" />
                 <MobileNavButton active={activeTab === 'players'} onClick={() => setActiveTab('players')} icon={List} label="Pool" />
                 <MobileNavButton active={activeTab === 'sold'} onClick={() => setActiveTab('sold')} icon={DollarSign} label="Sold" />
-                <button onClick={() => setView('login')} className="viewer-mobile-nav-btn">
-                    <LogIn className="w-5 h-5" style={{ marginBottom: '2px' }} />
-                    <span style={{ fontSize: '10px', fontWeight: 'bold' }}>Admin</span>
-                </button>
             </div>
+
+            {/* Player Bidding History Modal */}
+            <Modal isOpen={!!historyPlayer} onClose={() => setHistoryPlayer(null)} title="Bidding History">
+                <div style={{ padding: 'var(--sp-2)' }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 'var(--sp-4)', paddingBottom: 'var(--sp-3)', borderBottom: '1px solid var(--border)' }}>
+                        <div>
+                            <div style={{ fontSize: 'var(--text-sub)', fontWeight: 'bold' }}>{historyPlayer?.name}</div>
+                            <div style={{ fontSize: 'var(--text-secondary)', color: 'var(--text-muted)' }}>{historyPlayer?.role} • {historyPlayer?.category}</div>
+                        </div>
+                        <div style={{ textAlign: 'right' }}>
+                            <div style={{ fontSize: 'var(--text-sub)', fontWeight: 'bold', color: 'var(--success)', fontFamily: 'var(--font-mono)' }}>₹{historyPlayer?.soldPrice}L</div>
+                            <div style={{ fontSize: '10px', color: 'var(--text-muted)' }}>Sold Price</div>
+                        </div>
+                    </div>
+
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--sp-2)', overflowY: 'auto' }}>
+                        {historyPlayer?.bidHistory && historyPlayer.bidHistory.length > 0 ? (
+                            [...historyPlayer.bidHistory].reverse().map((hist, idx) => {
+                                const biddingTeam = teamMap.get(hist.leader);
+                                return (
+                                    <div key={idx} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: 'var(--sp-3)', backgroundColor: 'var(--bg-elevated)', borderRadius: 'var(--radius-md)', border: '1px solid var(--border)' }}>
+                                        <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--sp-2)' }}>
+                                            {biddingTeam ? (
+                                                <>
+                                                    <div style={{ width: '1.5rem', height: '1.5rem', borderRadius: '50%', backgroundColor: biddingTeam.color, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '10px', fontWeight: 'bold', color: '#ffffff' }}>
+                                                        {biddingTeam.name.charAt(0)}
+                                                    </div>
+                                                    <span style={{ fontSize: 'var(--text-secondary)', fontWeight: 'var(--weight-semibold)', color: 'var(--text-primary)' }}>{biddingTeam.name}</span>
+                                                </>
+                                            ) : (
+                                                <span style={{ fontSize: 'var(--text-secondary)', color: 'var(--text-muted)' }}>Base Price</span>
+                                            )}
+                                        </div>
+                                        <span style={{ fontSize: 'var(--text-secondary)', fontWeight: 'bold', color: 'var(--success)', fontFamily: 'var(--font-mono)' }}>₹{hist.bid ?? historyPlayer?.basePrice ?? 20}L</span>
+                                    </div>
+                                );
+                            })
+                        ) : (
+                            <div style={{ fontSize: 'var(--text-secondary)', color: 'var(--text-muted)', fontStyle: 'italic', textAlign: 'center', padding: 'var(--sp-4) 0' }}>No bid details saved for this player round.</div>
+                        )}
+                    </div>
+                </div>
+            </Modal>
         </div>
     );
 }
@@ -785,58 +843,103 @@ function LiveAuctionView({ liveState, playerMap, teamMap }) {
 
     if (liveState?.status === 'ACTIVE' && currentPlayer) {
         return (
-            <div className="viewer-live-arena">
-                <div className="viewer-live-arena-left">
-                    <div className="viewer-live-arena-left-blur-glow"></div>
-                    <div className="viewer-live-card-container">
-                        <div>
-                            <span className="viewer-live-category-badge">{currentPlayer.category}</span>
-                            <h1 className="viewer-live-player-title">{currentPlayer.name}</h1>
-                            <div className="viewer-live-role-subtitle">
-                                {ROLE_ICONS[currentPlayer.role]} {currentPlayer.role}
+            <div className="viewer-live-layout">
+                {/* 1. Sticky Active Card */}
+                <div className="viewer-live-sticky-card">
+                    {leadingTeam && (
+                        <div className="viewer-live-right-glow-bg"
+                            style={{ background: `radial-gradient(ellipse at top right, ${leadingTeam.color}22, transparent 70%)` }} />
+                    )}
+
+                    {/* Top: Player Info */}
+                    <div className="viewer-live-unified-top">
+                        <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 'var(--sp-4)' }}>
+                            <div style={{ flex: 1 }}>
+                                <span className="viewer-live-category-badge">{currentPlayer.category}</span>
+                                <h1 className="viewer-live-player-title" style={{ fontSize: 'var(--text-title)', marginBottom: 'var(--sp-1)' }}>{currentPlayer.name}</h1>
+                                <div className="viewer-live-role-subtitle" style={{ fontSize: 'var(--text-secondary)' }}>
+                                    {ROLE_ICONS[currentPlayer.role]} {currentPlayer.role}
+                                </div>
+                            </div>
+                            <div style={{ textAlign: 'right', flexShrink: 0 }}>
+                                <div style={{ fontSize: 'var(--text-micro)', fontWeight: 'bold', color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.06em' }}>Base</div>
+                                <div style={{ fontSize: 'var(--text-card)', fontWeight: 900, fontFamily: 'var(--font-mono)', color: 'var(--text-secondary)' }}>₹{currentPlayer.basePrice}L</div>
                             </div>
                         </div>
-                        <div className="viewer-live-base-row">
-                            <div className="viewer-live-base-label">Base Price</div>
-                            <div className="viewer-live-base-val">₹{currentPlayer.basePrice}L</div>
-                        </div>
                     </div>
-                </div>
 
-                <div className="viewer-live-arena-right">
-                    <div className="live-auction-card" style={{ flex: 1, padding: 'var(--space-8)' }}>
-                        {leadingTeam && (<div className="viewer-live-right-glow-bg" style={{ background: `radial-gradient(circle at center, ${leadingTeam.color}, transparent 70%)` }}></div>)}
+                    {/* Divider — bleeds to card edge using card's own padding value */}
+                    <div className="viewer-live-divider" />
 
-                        <div className="viewer-live-indicator-row">
-                            <span className="viewer-live-indicator-glow"><span className="viewer-live-indicator-ping"></span><span className="viewer-live-indicator-dot"></span></span>
+                    {/* Middle: Live Bid */}
+                    <div className="viewer-live-unified-mid">
+                        <div className="viewer-live-indicator-row" style={{ marginBottom: 'var(--sp-3)' }}>
+                            <span className="viewer-live-indicator-glow"><span className="viewer-live-indicator-ping" /><span className="viewer-live-indicator-dot" /></span>
                             <span className="viewer-live-bids-label">Live Bidding</span>
                         </div>
-
-                        <div role="status" aria-live="polite" className="viewer-live-current-bid-row">
+                        <div role="status" aria-live="polite" className="viewer-live-current-bid-row" style={{ marginBottom: 'var(--sp-4)' }}>
                             <span className="viewer-live-current-bid-curr">₹</span>{liveState.currentBid}<span className="viewer-live-current-bid-unit">L</span>
                         </div>
 
-                        <div className="viewer-live-leader-wrapper">
-                            {leadingTeam ? (
-                                <div className="viewer-live-leader-card">
-                                    <div className="viewer-live-leader-card-left">
-                                        <div className="viewer-live-leader-avatar" style={{ backgroundColor: leadingTeam.color }}>{leadingTeam.name.charAt(0)}</div>
-                                        <div>
-                                            <div className="viewer-live-leader-label">Current Leader</div>
-                                            <div className="viewer-live-leader-name">{leadingTeam.name}</div>
-                                        </div>
+                        {/* Leader */}
+                        {leadingTeam ? (
+                            <div className="viewer-live-leader-card">
+                                <div className="viewer-live-leader-card-left">
+                                    <div className="viewer-live-leader-avatar" style={{ backgroundColor: leadingTeam.color }}>{leadingTeam.name.charAt(0)}</div>
+                                    <div>
+                                        <div className="viewer-live-leader-label">Current Leader</div>
+                                        <div className="viewer-live-leader-name">{leadingTeam.name}</div>
                                     </div>
-                                    <TrendingUp className="text-green-500 w-6 h-6" />
                                 </div>
-                            ) : (
-                                <div className="text-center animate-pulse" style={{ color: 'var(--text-muted-dark)', fontWeight: 'bold', textTransform: 'uppercase' }}>Waiting for bids...</div>
-                            )}
-                        </div>
+                                <TrendingUp className="text-green-500 w-5 h-5" />
+                            </div>
+                        ) : (
+                            <div style={{ padding: 'var(--sp-2)', textAlign: 'center', color: 'var(--text-muted)', fontSize: 'var(--text-secondary)', fontWeight: 'bold', textTransform: 'uppercase', letterSpacing: '0.08em' }}>Waiting for bids…</div>
+                        )}
+                    </div>
+                </div>
+
+                {/* 2. History Section: scrolls in page flow below the sticky card */}
+                <div className="viewer-live-history-section animate-fade-in">
+                    <div style={{ fontSize: 'var(--text-micro)', fontWeight: 'bold', color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: 'var(--sp-3)' }}>
+                        Bid History
+                    </div>
+                    <div className="viewer-live-history-list-natural">
+                        {liveState?.bidHistory && liveState.bidHistory.length > 0 ? (
+                            [...liveState.bidHistory].reverse().map((hist, idx, arr) => {
+                                const biddingTeam = teamMap.get(hist.leader);
+                                const isLast = idx === arr.length - 1;
+                                return (
+                                    <div key={idx} style={{
+                                        display: 'flex', justifyContent: 'space-between', alignItems: 'center',
+                                        padding: 'var(--sp-3) 0',
+                                        borderBottom: isLast ? 'none' : '1px solid var(--border)',
+                                    }}>
+                                        <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--sp-2)' }}>
+                                            {biddingTeam ? (
+                                                <>
+                                                    <div style={{ width: '1.4rem', height: '1.4rem', borderRadius: '50%', backgroundColor: biddingTeam.color, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '9px', fontWeight: 'bold', color: '#fff', flexShrink: 0 }}>
+                                                        {biddingTeam.name.charAt(0)}
+                                                    </div>
+                                                    <span style={{ fontSize: 'var(--text-secondary)', fontWeight: 'var(--weight-semibold)', color: 'var(--text-primary)' }}>{biddingTeam.name}</span>
+                                                </>
+                                            ) : (
+                                                <span style={{ fontSize: 'var(--text-secondary)', color: 'var(--text-muted)' }}>Base Price</span>
+                                            )}
+                                        </div>
+                                        <span style={{ fontSize: 'var(--text-secondary)', fontWeight: 'bold', color: idx === 0 ? 'var(--success)' : 'var(--text-muted)', fontFamily: 'var(--font-mono)' }}>₹{hist.bid ?? currentPlayer?.basePrice ?? 20}L</span>
+                                    </div>
+                                );
+                            })
+                        ) : (
+                            <div style={{ fontSize: 'var(--text-secondary)', color: 'var(--text-muted)', fontStyle: 'italic', textAlign: 'center', padding: 'var(--sp-4) 0' }}>No previous bids in this round</div>
+                        )}
                     </div>
                 </div>
             </div>
         );
     }
+
 
     return (
         <div className="live-idle-wrapper">
@@ -860,7 +963,7 @@ function TournamentResultsView({ safeTeams, safePlayers, squadMap, teamMap, spen
                 overflow: 'hidden',
                 padding: 'var(--sp-8) var(--sp-6)',
                 textAlign: 'center',
-                background: 'linear-gradient(135deg, rgba(30,41,59,0.9), rgba(15,23,42,0.95))',
+                background: 'linear-gradient(135deg, #131827, #0b0e17)', /* premium dark background */
                 border: '1px solid var(--border-strong)',
                 borderRadius: 'var(--radius-2xl)',
                 boxShadow: '0 20px 40px -15px rgba(0,0,0,0.5), inset 0 1px 0 rgba(255,255,255,0.05)'
@@ -872,11 +975,23 @@ function TournamentResultsView({ safeTeams, safePlayers, squadMap, teamMap, spen
                     transform: 'translate(-50%, -50%)',
                     width: '300px',
                     height: '300px',
-                    background: 'radial-gradient(circle, rgba(234,179,8,0.1) 0%, transparent 70%)',
+                    background: 'radial-gradient(circle, rgba(234,179,8,0.08) 0%, transparent 75%)',
                     pointerEvents: 'none'
                 }}></div>
-                <div style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'center', width: '4.5rem', height: '4.5rem', borderRadius: '50%', backgroundColor: 'rgba(234,179,8,0.1)', border: '2px solid var(--warning)', marginBottom: 'var(--sp-4)', color: 'var(--warning)' }}>
-                    <Trophy className="w-8 h-8 animate-bounce" />
+                <div style={{ 
+                    display: 'inline-flex', 
+                    alignItems: 'center', 
+                    justifyContent: 'center', 
+                    width: '4rem', 
+                    height: '4rem', 
+                    borderRadius: 'var(--radius-xl)', 
+                    backgroundColor: 'rgba(234,179,8,0.05)', 
+                    border: '1px solid rgba(234,179,8,0.2)', 
+                    marginBottom: 'var(--sp-4)', 
+                    color: 'var(--warning)',
+                    filter: 'drop-shadow(0 0 15px rgba(234,179,8,0.2))'
+                }}>
+                    <Trophy className="w-7 h-7" />
                 </div>
                 <h1 style={{ fontSize: 'var(--text-3xl)', fontWeight: '900', color: '#ffffff', margin: 0, textShadow: '0 2px 10px rgba(0,0,0,0.5)' }}>Tournament Completed</h1>
                 <p style={{ color: 'var(--text-muted)', fontSize: 'var(--text-secondary)', marginTop: '6px', fontWeight: '500' }}>
@@ -888,15 +1003,34 @@ function TournamentResultsView({ safeTeams, safePlayers, squadMap, teamMap, spen
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))', gap: 'var(--sp-4)' }}>
                 {/* Highlight 1: Highest Spender */}
                 {spenderTeam && (
-                    <div className="card" style={{ padding: 'var(--sp-6)', position: 'relative', overflow: 'hidden', border: `1px solid ${spenderTeam.color}30`, boxShadow: `0 4px 20px ${spenderTeam.color}08` }}>
+                    <div className="card" style={{ 
+                        padding: 'var(--sp-6)', 
+                        position: 'relative', 
+                        overflow: 'hidden', 
+                        background: 'var(--bg-surface-dark)',
+                        border: `1px solid ${spenderTeam.color}25`, 
+                        boxShadow: `0 4px 20px ${spenderTeam.color}04` 
+                    }}>
                         <div style={{ fontSize: '10px', fontWeight: 'bold', color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Highest Spender</div>
                         <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--sp-3)', marginTop: 'var(--sp-2)' }}>
-                            <div style={{ width: '36px', height: '36px', borderRadius: '50%', backgroundColor: `${spenderTeam.color}15`, border: `2px solid ${spenderTeam.color}`, display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: '900', color: spenderTeam.color }}>
+                            <div style={{ 
+                                width: '38px', 
+                                height: '38px', 
+                                borderRadius: '10px', 
+                                backgroundColor: `${spenderTeam.color}08`, 
+                                border: `1px solid ${spenderTeam.color}40`, 
+                                display: 'flex', 
+                                alignItems: 'center', 
+                                justifyContent: 'center', 
+                                fontWeight: '800', 
+                                color: spenderTeam.color,
+                                fontSize: '12px'
+                            }}>
                                 {spenderTeam.logoText || spenderTeam.name.split(' ').map(n => n[0]).join('').slice(0, 3).toUpperCase()}
                             </div>
                             <div>
                                 <div style={{ fontWeight: 'bold', fontSize: 'var(--text-secondary)' }}>{spenderTeam.name}</div>
-                                <div style={{ fontSize: 'var(--text-secondary)', fontWeight: '900', color: 'var(--text-primary)', marginTop: '2px' }}>₹{spenderSpent}L Spent</div>
+                                <div style={{ fontSize: 'var(--text-secondary)', fontWeight: '800', color: 'var(--text-primary)', marginTop: '2px' }}>₹{spenderSpent}L Spent</div>
                             </div>
                         </div>
                     </div>
@@ -904,31 +1038,43 @@ function TournamentResultsView({ safeTeams, safePlayers, squadMap, teamMap, spen
 
                 {/* Highlight 2: Most Expensive Player */}
                 {mostExpensivePlayer && (
-                    <div className="card" style={{ padding: 'var(--sp-6)', position: 'relative', overflow: 'hidden' }}>
+                    <div className="card" style={{ padding: 'var(--sp-6)', position: 'relative', overflow: 'hidden', background: 'var(--bg-surface-dark)', border: '1px solid var(--border-strong)' }}>
                         <div style={{ fontSize: '10px', fontWeight: 'bold', color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Most Expensive Player</div>
                         <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--sp-3)', marginTop: 'var(--sp-2)' }}>
-                            <div style={{ width: '36px', height: '36px', borderRadius: '50%', backgroundColor: 'rgba(234,179,8,0.1)', border: '2px solid var(--warning)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--warning)' }}>
-                                <Trophy className="w-5 h-5" />
+                            <div style={{ 
+                                width: '38px', 
+                                height: '38px', 
+                                borderRadius: '10px', 
+                                backgroundColor: 'rgba(234,179,8,0.04)', 
+                                border: '1px solid rgba(234,179,8,0.2)', 
+                                display: 'flex', 
+                                alignItems: 'center', 
+                                justifyContent: 'center', 
+                                color: 'var(--warning)',
+                                filter: 'drop-shadow(0 0 10px rgba(234,179,8,0.1))'
+                            }}>
+                                <Trophy className="w-4 h-4" />
                             </div>
                             <div>
                                 <div style={{ fontWeight: 'bold', fontSize: 'var(--text-secondary)' }}>{mostExpensivePlayer.name}</div>
                                 <div style={{ fontSize: '11px', color: 'var(--text-muted)', marginTop: '4px', display: 'flex', alignItems: 'center', gap: 'var(--sp-1.5)', flexWrap: 'wrap' }}>
                                     <span>Sold to</span>
                                     <span style={{
-                                        backgroundColor: buyerTeam?.color || 'var(--bg-elevated)',
-                                        color: getContrastColor(buyerTeam?.color),
-                                        padding: '1px 8px',
+                                        backgroundColor: buyerTeam?.color ? `${buyerTeam.color}18` : 'var(--bg-elevated)',
+                                        color: buyerTeam?.color || 'var(--text-muted)',
+                                        border: `1px solid ${buyerTeam?.color ? buyerTeam.color + '40' : 'var(--border)'}`,
+                                        padding: '2px 8px',
                                         borderRadius: 'var(--radius-full)',
                                         fontSize: '9px',
                                         fontWeight: 'bold',
                                         textTransform: 'uppercase',
+                                        letterSpacing: '0.04em',
                                         display: 'inline-block',
-                                        border: '1px solid var(--border-strong)'
                                     }}>
                                         {buyerTeam?.name}
                                     </span>
                                     <span>for</span>
-                                    <span style={{ fontWeight: '950', color: 'var(--success)', fontSize: '12px' }}>₹{mostExpensivePlayer.soldPrice}L</span>
+                                    <span style={{ fontWeight: '800', color: 'var(--warning)', fontSize: '12px', fontFamily: 'var(--font-mono)' }}>₹{mostExpensivePlayer.soldPrice}L</span>
                                 </div>
                             </div>
                         </div>
@@ -937,15 +1083,34 @@ function TournamentResultsView({ safeTeams, safePlayers, squadMap, teamMap, spen
 
                 {/* Highlight 3: Largest Squad */}
                 {largestSquadTeam && (
-                    <div className="card" style={{ padding: 'var(--sp-6)', position: 'relative', overflow: 'hidden', border: `1px solid ${largestSquadTeam.color}30` }}>
+                    <div className="card" style={{ 
+                        padding: 'var(--sp-6)', 
+                        position: 'relative', 
+                        overflow: 'hidden', 
+                        background: 'var(--bg-surface-dark)',
+                        border: `1px solid ${largestSquadTeam.color}25`, 
+                        boxShadow: `0 4px 20px ${largestSquadTeam.color}04` 
+                    }}>
                         <div style={{ fontSize: '10px', fontWeight: 'bold', color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Largest Squad</div>
                         <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--sp-3)', marginTop: 'var(--sp-2)' }}>
-                            <div style={{ width: '36px', height: '36px', borderRadius: '50%', backgroundColor: `${largestSquadTeam.color}15`, border: `2px solid ${largestSquadTeam.color}`, display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: '900', color: largestSquadTeam.color }}>
+                            <div style={{ 
+                                width: '38px', 
+                                height: '38px', 
+                                borderRadius: '10px', 
+                                backgroundColor: `${largestSquadTeam.color}08`, 
+                                border: `1px solid ${largestSquadTeam.color}40`, 
+                                display: 'flex', 
+                                alignItems: 'center', 
+                                justifyContent: 'center', 
+                                fontWeight: '800', 
+                                color: largestSquadTeam.color,
+                                fontSize: '12px'
+                            }}>
                                 {largestSquadTeam.logoText || largestSquadTeam.name.split(' ').map(n => n[0]).join('').slice(0, 3).toUpperCase()}
                             </div>
                             <div>
                                 <div style={{ fontWeight: 'bold', fontSize: 'var(--text-secondary)' }}>{largestSquadTeam.name}</div>
-                                <div style={{ fontSize: 'var(--text-secondary)', fontWeight: '900', color: 'var(--text-primary)', marginTop: '2px' }}>{largestSquadCount} Players</div>
+                                <div style={{ fontSize: 'var(--text-secondary)', fontWeight: '800', color: 'var(--text-primary)', marginTop: '2px' }}>{largestSquadCount} Players</div>
                             </div>
                         </div>
                     </div>
@@ -955,12 +1120,12 @@ function TournamentResultsView({ safeTeams, safePlayers, squadMap, teamMap, spen
             {/* LOWER PORTION: STATISTICS + TOP PURCHASES */}
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(320px, 1fr))', gap: 'var(--sp-6)' }}>
                 {/* Stats Summary */}
-                <div className="card" style={{ padding: 'var(--sp-6)', display: 'flex', flexDirection: 'column', gap: 'var(--sp-4)' }}>
+                <div className="card" style={{ padding: 'var(--sp-6)', display: 'flex', flexDirection: 'column', gap: 'var(--sp-4)', background: 'var(--bg-surface-dark)', border: '1px solid var(--border-strong)' }}>
                     <h3 style={{ fontSize: 'var(--text-sub)', fontWeight: 'bold', margin: 0 }}>Auction Summary</h3>
                     <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--sp-3)', marginTop: 'var(--sp-2)' }}>
                         <div style={{ display: 'flex', justifyContent: 'space-between', borderBottom: '1px solid var(--border)', paddingBottom: 'var(--sp-2)' }}>
                             <span style={{ fontSize: 'var(--text-secondary)', color: 'var(--text-muted)' }}>Total Money Spent</span>
-                            <span className="font-mono" style={{ fontWeight: 'bold', color: 'var(--success)' }}>₹{totalSpent}L</span>
+                            <span className="font-mono" style={{ fontWeight: 'bold', color: 'var(--warning)' }}>₹{totalSpent}L</span>
                         </div>
                         <div style={{ display: 'flex', justifyContent: 'space-between', borderBottom: '1px solid var(--border)', paddingBottom: 'var(--sp-2)' }}>
                             <span style={{ fontSize: 'var(--text-secondary)', color: 'var(--text-muted)' }}>Sold Players Count</span>
@@ -968,7 +1133,7 @@ function TournamentResultsView({ safeTeams, safePlayers, squadMap, teamMap, spen
                         </div>
                         <div style={{ display: 'flex', justifyContent: 'space-between', borderBottom: '1px solid var(--border)', paddingBottom: 'var(--sp-2)' }}>
                             <span style={{ fontSize: 'var(--text-secondary)', color: 'var(--text-muted)' }}>Unsold Players Count</span>
-                            <span className="font-mono" style={{ fontWeight: 'bold', color: 'var(--danger-light)' }}>{unsoldCount} Unsold</span>
+                            <span className="font-mono" style={{ fontWeight: 'bold', color: 'var(--text-muted)' }}>{unsoldCount} Unsold</span>
                         </div>
                         <div style={{ display: 'flex', justifyContent: 'space-between', paddingBottom: 'var(--sp-1)' }}>
                             <span style={{ fontSize: 'var(--text-secondary)', color: 'var(--text-muted)' }}>Average Player Value</span>
@@ -978,7 +1143,7 @@ function TournamentResultsView({ safeTeams, safePlayers, squadMap, teamMap, spen
                 </div>
 
                 {/* Top 5 Purchases */}
-                <div className="card" style={{ padding: 'var(--sp-6)', display: 'flex', flexDirection: 'column', gap: 'var(--sp-4)' }}>
+                <div className="card" style={{ padding: 'var(--sp-6)', display: 'flex', flexDirection: 'column', gap: 'var(--sp-4)', background: 'var(--bg-surface-dark)', border: '1px solid var(--border-strong)' }}>
                     <h3 style={{ fontSize: 'var(--text-sub)', fontWeight: 'bold', margin: 0 }}>Top Purchases</h3>
                     <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--sp-2.5)' }}>
                         {topPurchases.map((p, index) => {
@@ -986,7 +1151,19 @@ function TournamentResultsView({ safeTeams, safePlayers, squadMap, teamMap, spen
                             return (
                                 <div key={p._id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderBottom: index < topPurchases.length - 1 ? '1px solid var(--border)' : 'none', paddingBottom: 'var(--sp-2)' }}>
                                     <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--sp-3)' }}>
-                                        <div style={{ width: '22px', height: '22px', borderRadius: '50%', backgroundColor: 'var(--bg-elevated)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 'bold', fontSize: '10px', color: 'var(--text-muted)' }}>
+                                        <div style={{ 
+                                            width: '24px', 
+                                            height: '24px', 
+                                            borderRadius: '6px', 
+                                            backgroundColor: 'rgba(255, 255, 255, 0.03)', 
+                                            border: '1px solid var(--border)',
+                                            display: 'flex', 
+                                            alignItems: 'center', 
+                                            justifyContent: 'center', 
+                                            fontWeight: 'bold', 
+                                            fontSize: '10px', 
+                                            color: 'var(--text-muted)' 
+                                        }}>
                                             #{index + 1}
                                         </div>
                                         <div>
@@ -994,22 +1171,23 @@ function TournamentResultsView({ safeTeams, safePlayers, squadMap, teamMap, spen
                                             <div style={{ fontSize: '10px', color: 'var(--text-muted)', marginTop: '4px', display: 'flex', alignItems: 'center', gap: 'var(--sp-1.5)' }}>
                                                 <span>Sold to</span>
                                                 <span style={{
-                                                    backgroundColor: team?.color || 'var(--bg-elevated)',
-                                                    color: getContrastColor(team?.color),
-                                                    padding: '1px 6px',
+                                                    backgroundColor: team?.color ? `${team.color}18` : 'var(--bg-elevated)',
+                                                    color: team?.color || 'var(--text-muted)',
+                                                    border: `1px solid ${team?.color ? team.color + '40' : 'var(--border)'}`,
+                                                    padding: '2px 7px',
                                                     borderRadius: 'var(--radius-full)',
                                                     fontSize: '9px',
                                                     fontWeight: 'bold',
                                                     textTransform: 'uppercase',
+                                                    letterSpacing: '0.04em',
                                                     display: 'inline-block',
-                                                    border: '1px solid var(--border-strong)'
                                                 }}>
                                                     {team?.name}
                                                 </span>
                                             </div>
                                         </div>
                                     </div>
-                                    <span className="font-mono" style={{ fontWeight: '900', color: 'var(--success)' }}>₹{p.soldPrice}L</span>
+                                    <span className="font-mono" style={{ fontWeight: '700', color: 'var(--text-primary)', fontSize: 'var(--text-secondary)' }}>₹{p.soldPrice}L</span>
                                 </div>
                             );
                         })}

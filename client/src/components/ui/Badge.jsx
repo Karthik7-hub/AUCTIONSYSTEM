@@ -1,6 +1,6 @@
 import React from 'react';
 
-export default function Badge({ children, variant = 'default', className = '', style, onClick, title }) {
+function Badge({ children, variant = 'default', className = '', style, onClick, title }) {
     const variantClass = {
         default: 'badge',
         success: 'badge badge-success',
@@ -20,3 +20,5 @@ export default function Badge({ children, variant = 'default', className = '', s
         </span>
     );
 }
+
+export default React.memo(Badge);

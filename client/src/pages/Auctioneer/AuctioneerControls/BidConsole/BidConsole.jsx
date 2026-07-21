@@ -12,12 +12,14 @@ import './BidConsole.css';
 // - 500 to 1000: 50
 // - Above 1000: 100
 export const getAutoIncrement = (currentBid) => {
-    const bid = currentBid || 0;
-    if (bid < 300) return 10;
-    if (bid < 500) return 20;
-    if (bid < 1000) return 50;
+    const val = Number(currentBid) || 0;
+    if (val < 300) return 10;
+    if (val < 500) return 20;
+    if (val < 1000) return 50;
     return 100;
 };
+
+const INCREMENT_STEPS = [5, 10, 20, 50, 100, 200, 500];
 
 export default function BidConsole({
     teams,
@@ -30,13 +32,39 @@ export default function BidConsole({
     isPending,
     showAlert
 }) {
-    const [increment, setIncrement] = useState(() => getAutoIncrement(liveState?.currentBid));
+    const effectiveBid = (liveState?.leadingTeamId !== null && liveState?.currentBid > 0)
+        ? liveState.currentBid
+        : (currentPlayer?.basePrice || liveState?.currentBid || 0);
+
+    const autoIncrement = getAutoIncrement(effectiveBid);
+    const [manualIncrement, setManualIncrement] = useState(null);
     const [customBid, setCustomBid] = useState('');
 
-    // Auto-update increment based on current bid tier
+    // Reset manual override whenever current bid or player changes
     useEffect(() => {
-        setIncrement(getAutoIncrement(liveState?.currentBid));
+        setManualIncrement(null);
     }, [liveState?.currentBid, liveState?.currentPlayerId]);
+
+    const increment = manualIncrement !== null ? manualIncrement : autoIncrement;
+
+    const handleMinusIncrement = () => {
+        const idx = INCREMENT_STEPS.findIndex(step => step >= increment);
+        if (idx > 0) {
+            setManualIncrement(INCREMENT_STEPS[idx - 1]);
+        } else {
+            setManualIncrement(Math.max(1, increment - 5));
+        }
+    };
+
+    const handlePlusIncrement = () => {
+        const revIdx = INCREMENT_STEPS.slice().reverse().findIndex(step => step <= increment);
+        const actualIdx = revIdx >= 0 ? (INCREMENT_STEPS.length - 1 - revIdx) : -1;
+        if (actualIdx >= 0 && actualIdx < INCREMENT_STEPS.length - 1) {
+            setManualIncrement(INCREMENT_STEPS[actualIdx + 1]);
+        } else {
+            setManualIncrement(increment + 10);
+        }
+    };
 
     const handlePlaceBid = (teamId) => {
         const team = teams.find(t => t._id === teamId);
@@ -90,15 +118,17 @@ export default function BidConsole({
 
                         <div className="bid-console__increment-pill">
                             <button 
-                                onClick={() => setIncrement(Math.max(1, increment - 5))}
+                                onClick={handleMinusIncrement}
                                 className="bid-console__increment-button"
+                                title="Decrease Increment"
                             >
                                 <Minus className="w-3 h-3" />
                             </button>
-                            <span className="bid-console__increment-value">₹{increment}</span>
+                            <span className="bid-console__increment-value">₹{increment}L</span>
                             <button 
-                                onClick={() => setIncrement(increment + 5)}
+                                onClick={handlePlusIncrement}
                                 className="bid-console__increment-button"
+                                title="Increase Increment"
                             >
                                 <Plus className="w-3 h-3" />
                             </button>

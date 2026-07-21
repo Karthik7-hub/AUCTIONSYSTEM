@@ -1,0 +1,231 @@
+.teams-performance-section {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-4);
+}
+
+.teams-section-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.teams-pdf-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  padding: 8px 16px;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.06);
+  border: none;
+  color: rgba(255, 255, 255, 0.75);
+  font-size: 0.8rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background 0.18s, color 0.18s;
+}
+
+.teams-pdf-btn:hover {
+  background: rgba(255, 255, 255, 0.12);
+  color: #fff;
+}
+
+
+.teams-card {
+  background: linear-gradient(180deg, #1B2132 0%, #161B29 100%);
+  border: none;
+  border-radius: var(--radius-2xl);
+  padding: var(--sp-4) var(--sp-6);
+  box-shadow: 0 1px 0 rgba(255, 255, 255, 0.03) inset, 0 20px 50px rgba(0, 0, 0, 0.35);
+}
+
+.teams-list {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-3);
+}
+
+.team-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: var(--sp-3) var(--sp-4);
+  border-radius: var(--radius-xl);
+  background: rgba(15, 20, 32, 0.5);
+  border: none;
+  cursor: pointer;
+  transition: transform var(--transition-fast), background-color var(--transition-fast);
+}
+
+.team-row:hover {
+  background: rgba(255, 255, 255, 0.04);
+  transform: translateX(4px);
+}
+
+.team-left {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-4);
+  min-width: 180px;
+}
+
+.team-logo {
+  width: 40px;
+  height: 40px;
+  border-radius: var(--radius-xl);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: var(--text-xs);
+  font-weight: 900;
+  flex-shrink: 0;
+  margin-right: 4px;
+}
+
+.team-title {
+  font-size: var(--text-base);
+  font-weight: 800;
+  color: #ffffff;
+}
+
+.team-sub {
+  font-size: var(--text-xs);
+  color: var(--text-muted);
+}
+
+.team-mid {
+  flex: 1;
+  max-width: 240px;
+  margin: 0 var(--sp-6);
+}
+
+.bar-bg {
+  width: 100%;
+  height: 6px;
+  background: rgba(255, 255, 255, 0.06);
+  border-radius: var(--radius-full);
+  overflow: hidden;
+}
+
+.bar-fill {
+  height: 100%;
+  border-radius: var(--radius-full);
+}
+
+.team-right {
+  display: flex;
+  align-items: center;
+}
+
+.rem-val {
+  font-size: var(--text-sm);
+  font-weight: 800;
+  color: #34D399;
+}
+
+@media (max-width: 640px) {
+  .team-mid {
+    display: none;
+  }
+}
+
+/* ── Team Detail Modal ─────────────────────────────────── */
+
+.team-modal__body {
+  padding: var(--sp-2) 0;
+}
+
+.team-modal__empty {
+  text-align: center;
+  color: var(--text-muted);
+  padding: var(--sp-8) 0;
+  font-size: var(--text-sm);
+}
+
+.team-modal__roles-container {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-5);
+}
+
+.team-modal__role-group {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-2);
+}
+
+.team-modal__role-header {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-2);
+  padding-bottom: var(--sp-1);
+}
+
+.role-title {
+  font-size: var(--text-sm);
+  font-weight: 700;
+  color: var(--text-secondary);
+  letter-spacing: 0.02em;
+}
+
+.team-modal__player-list {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+/* sold-tab style row */
+.team-modal__player-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 10px 12px;
+  border-radius: var(--radius-lg);
+  background: rgba(255, 255, 255, 0.03);
+  transition: background 0.15s;
+}
+
+.team-modal__player-row:hover {
+  background: rgba(255, 255, 255, 0.06);
+}
+
+.team-modal__player-left {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+/* Avatar circle — same as feed__avatar in sold tab */
+.team-modal__player-avatar {
+  width: 34px;
+  height: 34px;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.08);
+  color: #fff;
+  font-size: 14px;
+  font-weight: 800;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.team-modal__player-name {
+  font-size: var(--text-sm);
+  font-weight: 700;
+  color: #ffffff;
+  line-height: 1.2;
+}
+
+.team-modal__player-role {
+  font-size: var(--text-xs);
+  color: var(--text-muted);
+  margin-top: 1px;
+}
+
+.team-modal__player-price {
+  font-size: var(--text-sm);
+  font-weight: 800;
+  color: #34D399;
+}
+

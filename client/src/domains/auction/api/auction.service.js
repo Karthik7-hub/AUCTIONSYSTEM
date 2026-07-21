@@ -31,3 +31,19 @@ export const deleteAuction = (id) => {
 export const getAuctionInit = (auctionId) => {
     return http.get(`/api/init/${auctionId}?t=${Date.now()}`);
 };
+
+export const getAuctionResults = (auctionId) => {
+    return http.get(`/api/auctions/${auctionId}/results?t=${Date.now()}`);
+};
+
+export const getTeamSummary = (auctionId) => {
+    return http.get(`/api/auctions/${auctionId}/team-summary`);
+};
+
+export const getTeamDetail = (auctionId, teamId) => {
+    return http.get(`/api/auctions/${auctionId}/team/${teamId}`);
+};
+
+export const getAuctionPDFData = (auctionId) => {
+    return http.get(`/api/auctions/${auctionId}/pdf-data`);
+};

@@ -1,6 +1,8 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { Trophy, ChevronUp, ChevronDown, Users, Target, Activity, Shield, UserCheck } from 'lucide-react';
 import Modal from '@shared/components/Modal';
+import Loader from '@shared/components/Loader';
+import { getTeamDetail } from '@domains/auction/api/auction.service';
 import './TeamDetailModal.css';
 
 const ROLE_ICONS = {
@@ -11,11 +13,36 @@ const ROLE_ICONS = {
     'default': <Users className="w-3 h-3" />
 };
 
-export default function TeamDetailModal({ team, squad, config, onClose }) {
-    const [isStatsExpanded, setIsStatsExpanded] = useState(true);
+export default function TeamDetailModal({ team, squad: propSquad, auctionId, config, onClose }) {
+    const [isStatsExpanded, setIsStatsExpanded] = useState(false);
+    const [fetchedSquad, setFetchedSquad] = useState(null);
+    const [loading, setLoading] = useState(false);
+
+    useEffect(() => {
+        if (propSquad) return;
+        if (team?._id && auctionId) {
+            setLoading(true);
+            getTeamDetail(auctionId, team._id)
+                .then(res => {
+                    setFetchedSquad(res.data?.squad || []);
+                })
+                .catch(err => {
+                    console.error('Error fetching squad for modal:', err);
+                    setFetchedSquad([]);
+                })
+                .finally(() => setLoading(false));
+        }
+    }, [team, propSquad, auctionId]);
+
+    const rawSquad = propSquad || fetchedSquad || [];
+
+    // Sort squad by price descending so highest purchases are ordered first (#1, #2...)
+    const squad = useMemo(() => {
+        return [...rawSquad].sort((a, b) => (b.soldPrice || 0) - (a.soldPrice || 0));
+    }, [rawSquad]);
 
     const realSpent = useMemo(() => squad.reduce((total, p) => total + (p.soldPrice || 0), 0), [squad]);
-    const realRemaining = team.budget - realSpent;
+    const realRemaining = (team?.budget || 0) - realSpent;
 
     // Define configured roles in uppercase
     const configuredRoles = useMemo(() => {
@@ -59,7 +86,7 @@ export default function TeamDetailModal({ team, squad, config, onClose }) {
             onClose={onClose}
             maxWidth="32rem"
             bannerColor={team.color}
-            forceTheme="dark"
+            theme="dark"
             title={
                 <div className="team-modal__title-row">
                     <div className="team-modal__title-icon-wrapper">
@@ -140,18 +167,20 @@ export default function TeamDetailModal({ team, squad, config, onClose }) {
                             <div className="team-modal__empty-subtitle">Players purchased during the auction will appear here.</div>
                         </div>
                     ) : (
-                        <div className="team-modal__squad-list" style={{ maxHeight: isStatsExpanded ? '380px' : '580px' }}>
+                        <div className="team-modal__squad-list" style={{ maxHeight: isStatsExpanded ? '380px' : '540px' }}>
                             {squad.map((p, idx) => (
                                 <div key={p._id} className="team-modal__player-card tr-hover">
                                     <div className="team-modal__player-row">
                                         <div className="team-modal__player-info">
-                                            <span className="team-modal__player-rank">#{idx + 1}</span>
-                                            <span className="team-modal__player-name">{p.name}</span>
+                                            <span className="team-modal__player-icon">
+                                                {ROLE_ICONS[p.role] || ROLE_ICONS['default']}
+                                            </span>
+                                            <div className="team-modal__player-details">
+                                                <span className="team-modal__player-name">{p.name}</span>
+                                                <span className="team-modal__player-meta">{p.role}</span>
+                                            </div>
                                         </div>
                                         <span className="team-modal__player-price">₹{p.soldPrice}L</span>
-                                    </div>
-                                    <div className="team-modal__player-meta">
-                                        {p.role} • {p.category}
                                     </div>
                                 </div>
                             ))}

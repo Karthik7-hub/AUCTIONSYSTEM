@@ -32,11 +32,19 @@
 
 .players__filters {
   margin: 0 !important;
-  padding: 0 !important;
+  padding: 0 var(--sp-1) !important;
   display: flex;
-  flex-wrap: wrap;
-  justify-content: center;
+  flex-wrap: nowrap;
+  overflow-x: auto;
   gap: var(--sp-2);
+  width: 100%;
+  /* hide scrollbar visually on all browsers */
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+}
+
+.players__filters::-webkit-scrollbar {
+  display: none;
 }
 
 .filter-btn {

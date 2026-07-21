@@ -142,6 +142,7 @@ class AuctionEngine {
                         player.isSold = false;
                         player.soldTo = null;
                         player.soldPrice = 0;
+                        player.soldAt = null;
                     }
                 });
             }
@@ -209,6 +210,7 @@ class AuctionEngine {
         const pId = state.currentPlayerId;
         const tId = state.leadingTeamId;
         const price = state.currentBid;
+        const soldAt = new Date(); // capture exact moment of sale
 
         // Update RAM Store immediately (O(1))
         state.status = 'SOLD';
@@ -220,6 +222,7 @@ class AuctionEngine {
             player.isUnsold = false;
             player.soldTo = tId;
             player.soldPrice = price;
+            player.soldAt = soldAt;
             player.bidHistory = [...state.bidHistory];
         }
 
@@ -238,7 +241,7 @@ class AuctionEngine {
         // Isolated write queue synchronization task
         this.queueWrite(idStr, async () => {
             await Promise.all([
-                Player.findByIdAndUpdate(pId, { isSold: true, isUnsold: false, soldTo: tId, soldPrice: price, bidHistory: state.bidHistory }),
+                Player.findByIdAndUpdate(pId, { isSold: true, isUnsold: false, soldTo: tId, soldPrice: price, bidHistory: state.bidHistory, soldAt }),
                 Team.findByIdAndUpdate(tId, { $inc: { spent: price }, $push: { players: pId } })
             ]);
             state.lastSavedVersion = currentVersion;

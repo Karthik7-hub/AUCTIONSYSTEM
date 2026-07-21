@@ -1,0 +1,92 @@
+.top-purchases-section {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-4);
+}
+
+.top-purchases-card {
+  background: linear-gradient(180deg, #1B2132 0%, #161B29 100%);
+  border: none;
+  border-radius: var(--radius-2xl);
+  padding: var(--sp-4) var(--sp-6);
+  box-shadow: 0 1px 0 rgba(255, 255, 255, 0.03) inset, 0 20px 50px rgba(0, 0, 0, 0.35);
+}
+
+.top-purchases-list {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-4);
+}
+
+.top-purchase-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: var(--sp-2) 0;
+}
+
+.top-purchase-left {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-4);
+}
+
+.rank-wrapper {
+  width: 36px;
+  height: 36px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.medal-icon {
+  font-size: 22px;
+  filter: drop-shadow(0 4px 10px rgba(0, 0, 0, 0.3));
+}
+
+.medal-num {
+  font-size: var(--text-xs);
+  font-weight: 800;
+  color: var(--text-muted);
+}
+
+.player-meta-box {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.player-name {
+  font-size: var(--text-base);
+  font-weight: 800;
+  color: #ffffff;
+}
+
+.player-sub-info {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-2);
+}
+
+.sold-role {
+  font-size: 10px;
+  font-weight: 700;
+  color: var(--text-muted);
+  text-transform: uppercase;
+}
+
+.sold-team-badge {
+  font-size: 10px;
+  font-weight: 800;
+  padding: 2px 8px;
+  border-radius: var(--radius-full);
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+}
+
+.top-purchase-right {
+  font-size: var(--text-lg);
+  font-weight: 900;
+  color: #EAB308;
+}

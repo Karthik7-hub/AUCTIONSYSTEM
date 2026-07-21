@@ -103,6 +103,7 @@ export default function ViewerScreen({ data, liveState, auctionId, config }) {
                     {activeTab === 'live' && (
                         isCompleted ? (
                             <ResultsPanel
+                                auctionId={auctionId}
                                 teams={safeTeams}
                                 players={safePlayers}
                                 squadMap={squadMap}

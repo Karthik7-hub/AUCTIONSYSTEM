@@ -236,10 +236,10 @@ export default function Dashboard() {
         let fileName = '';
 
         if (type === 'players') {
-            content = "Name,Role,Category,Base Price\nVirat Kohli,Batsman,Marquee,500\nMS Dhoni,Wicket Keeper,Marquee,400\nJasprit Bumrah,Bowler,Set 1,300";
+            content = "Name,Role,Category,Base Price\nPlayer 1,Batsman,Marquee,100\nPlayer 2,Bowler,Set 1,50\nPlayer 3,All Rounder,Set 1,50\nPlayer 4,Wicket Keeper,Set 2,20";
             fileName = "players_sample_template.csv";
         } else {
-            content = "Team Name,Budget\nCSK,10000\nMI,10000\nRCB,10000";
+            content = "Team Name,Budget,Color,Logo Text\nTeam Alpha,10000,#3B82F6,TA\nTeam Beta,10000,#10B981,TB\nTeam Gamma,10000,#EF4444,TG";
             fileName = "teams_sample_template.csv";
         }
 
@@ -369,7 +369,11 @@ export default function Dashboard() {
                 // Teams
                 const name = getColValue(rowMap, [/^team\s*name$/i, /^team$/i, /^name$/i]);
                 const budgetStr = getColValue(rowMap, [/^budget$/i, /^initial\s*budget$/i]);
+                const colorStr = getColValue(rowMap, [/^color$/i, /^hex$/i, /^team\s*color$/i]);
+                const logoTextStr = getColValue(rowMap, [/^logo\s*text$/i, /^logo$/i, /^initials$/i]);
                 const budget = Number(budgetStr);
+                const color = colorStr && colorStr.trim() ? colorStr.trim() : '#3B82F6';
+                const logoText = logoTextStr && logoTextStr.trim() ? logoTextStr.trim() : '';
 
                 let rowError = null;
                 if (!name) rowError = "Missing Team Name";
@@ -380,7 +384,7 @@ export default function Dashboard() {
                     errors.push({ row: rowNumber, error: rowError, name });
                 } else {
                     seenNames.add(name.toLowerCase());
-                    rows.push({ rowNumber, name, budget });
+                    rows.push({ rowNumber, name, budget, color, logoText });
                 }
             }
         }
@@ -465,13 +469,15 @@ export default function Dashboard() {
             const teams = res.data.teams || [];
             const players = res.data.players || [];
 
-            const headers = ["Team Name", "Initial Budget", "Remaining Budget", "Players Purchased"];
+            const headers = ["Team Name", "Budget", "Color", "Logo Text", "Remaining Budget", "Players Purchased"];
             const rows = teams.map(t => {
-                const purchasedCount = players.filter(p => p.soldTo === t._id).length;
-                const remainingBudget = (t.budget || 0) - (t.spent || 0);
+                const purchasedCount = players.filter(p => (p.soldTo?._id || p.soldTo) === t._id).length;
+                const remainingBudget = Math.max(0, (t.budget || 0) - (t.spent || 0));
                 return [
                     `"${(t.name || '').replace(/"/g, '""')}"`,
                     t.budget || 0,
+                    `"${t.color || '#3B82F6'}"`,
+                    `"${(t.logoText || '').replace(/"/g, '""')}"`,
                     remainingBudget,
                     purchasedCount
                 ];
@@ -704,6 +710,8 @@ export default function Dashboard() {
                                                             <th>Row #</th>
                                                             <th>Team Name</th>
                                                             <th>Budget</th>
+                                                            <th>Color</th>
+                                                            <th>Logo Text</th>
                                                         </tr>
                                                     )}
                                                 </thead>
@@ -719,7 +727,16 @@ export default function Dashboard() {
                                                                     <td>{row.basePrice}</td>
                                                                 </>
                                                             ) : (
-                                                                <td>{row.budget}</td>
+                                                                <>
+                                                                    <td>{row.budget}</td>
+                                                                    <td>
+                                                                        <span style={{ display: 'inline-flex', alignItems: 'center', gap: '6px' }}>
+                                                                            <span style={{ width: '12px', height: '12px', borderRadius: '50%', backgroundColor: row.color || '#3B82F6' }}></span>
+                                                                            {row.color}
+                                                                        </span>
+                                                                    </td>
+                                                                    <td>{row.logoText || '-'}</td>
+                                                                </>
                                                             )}
                                                         </tr>
                                                     ))}

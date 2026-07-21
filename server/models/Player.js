@@ -11,6 +11,7 @@ const PlayerSchema = new mongoose.Schema({
     isUnsold: { type: Boolean, default: false },
     soldTo: { type: mongoose.Schema.Types.ObjectId, ref: 'Team', default: null },
     soldPrice: { type: Number, default: 0 },
+    soldAt: { type: Date, default: null },
     bidHistory: [{
         bid: Number,
         leader: { type: mongoose.Schema.Types.ObjectId, ref: 'Team', default: null }

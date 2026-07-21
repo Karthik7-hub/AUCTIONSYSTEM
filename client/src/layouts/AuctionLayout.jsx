@@ -53,7 +53,14 @@ export default function AuctionLayout() {
     const data = useMemo(() => ({ teams, players }), [teams, players]);
 
     useEffect(() => {
-        const newSocket = io(API_URL, { transports: ['websocket'] });
+        const newSocket = io(API_URL, {
+            transports: ['polling', 'websocket'],
+            reconnection: true,
+            reconnectionAttempts: 20,
+            reconnectionDelay: 1000,
+            reconnectionDelayMax: 5000,
+            timeout: 30000
+        });
         setSocket(newSocket);
 
         const loadData = async () => {

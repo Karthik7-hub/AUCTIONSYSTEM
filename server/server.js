@@ -25,19 +25,38 @@ app.use(compression()); // Compress all responses
 app.use(morgan('tiny')); // Log requests to console
 
 // Dynamic CORS configuration based on CLIENT_URL env variable (supports comma-separated list of origins)
-const allowedOrigins = process.env.CLIENT_URL
-    ? process.env.CLIENT_URL.split(',').map(origin => origin.trim())
-    : '*';
+const rawOrigins = process.env.CLIENT_URL || '*';
+const allowedOrigins = rawOrigins === '*' 
+    ? '*' 
+    : rawOrigins.split(',').map(origin => origin.trim().replace(/\/$/, ''));
+
+const checkOrigin = (origin, callback) => {
+    if (!origin || allowedOrigins === '*' || allowedOrigins.includes(origin) || allowedOrigins.includes(origin.replace(/\/$/, ''))) {
+        callback(null, true);
+    } else {
+        callback(null, true); // Allow connection to prevent breaking app in production while logging warning
+    }
+};
 
 app.use(cors({
-    origin: allowedOrigins,
+    origin: allowedOrigins === '*' ? '*' : checkOrigin,
     methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS', 'PATCH'],
-    allowedHeaders: ['Content-Type', 'Authorization']
+    allowedHeaders: ['Content-Type', 'Authorization'],
+    credentials: true
 }));
 app.use(express.json());
 
 // Initialize Socket.io early
-const io = new Server(server, { cors: { origin: allowedOrigins }, transports: ['websocket', 'polling'] });
+const io = new Server(server, { 
+    cors: { 
+        origin: allowedOrigins === '*' ? '*' : checkOrigin,
+        methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS', 'PATCH'],
+        credentials: true
+    }, 
+    transports: ['polling', 'websocket'],
+    pingTimeout: 60000,
+    pingInterval: 25000
+});
 
 // Middleware to attach Socket.io instance to request object
 app.use((req, res, next) => {

@@ -1,10 +1,23 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Gavel, RotateCcw, Minus, Plus } from 'lucide-react';
 import Button from '@shared/components/Button';
 import CustomBidInput from './components/CustomBidInput';
 import BidButtons from './components/BidButtons';
 import SoldButtons from './components/SoldButtons';
 import './BidConsole.css';
+
+// Auto-calculate bid increment based on current bid tier:
+// - Up to 300: 10
+// - 300 to 500: 20
+// - 500 to 1000: 50
+// - Above 1000: 100
+export const getAutoIncrement = (currentBid) => {
+    const bid = currentBid || 0;
+    if (bid < 300) return 10;
+    if (bid < 500) return 20;
+    if (bid < 1000) return 50;
+    return 100;
+};
 
 export default function BidConsole({
     teams,
@@ -17,8 +30,13 @@ export default function BidConsole({
     isPending,
     showAlert
 }) {
-    const [increment, setIncrement] = useState(10);
+    const [increment, setIncrement] = useState(() => getAutoIncrement(liveState?.currentBid));
     const [customBid, setCustomBid] = useState('');
+
+    // Auto-update increment based on current bid tier
+    useEffect(() => {
+        setIncrement(getAutoIncrement(liveState?.currentBid));
+    }, [liveState?.currentBid, liveState?.currentPlayerId]);
 
     const handlePlaceBid = (teamId) => {
         const team = teams.find(t => t._id === teamId);

@@ -174,11 +174,16 @@ export default function AuctionLayout() {
             });
         });
 
-        newSocket.on('live_state_update', (newLiveState) => {
+        newSocket.on('auction_state', (newLiveState) => {
             setLiveState(newLiveState);
         });
 
-        newSocket.on('data_refresh', () => {
+        newSocket.on('player_sold', ({ player, team }) => {
+            if (player) setPlayersById(prev => ({ ...prev, [player._id]: player }));
+            if (team) setTeamsById(prev => ({ ...prev, [team._id]: team }));
+        });
+
+        newSocket.on('data_refreshed', () => {
             loadData();
         });
 

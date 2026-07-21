@@ -27,6 +27,76 @@ const createTeam = async (req, res) => {
     }
 };
 
+const bulkCreateTeams = async (req, res) => {
+    try {
+        let { auctionId, teams } = req.body;
+        if (!auctionId || !Array.isArray(teams)) {
+            return res.status(400).json({ error: "Invalid payload. 'auctionId' and 'teams' array are required." });
+        }
+
+        const isValid = mongoose.Types.ObjectId.isValid(auctionId);
+        if (!isValid) {
+            const auction = await Auction.findOne({ slug: auctionId }).select('_id').lean();
+            if (!auction) return res.status(404).json({ error: "Auction not found" });
+            auctionId = auction._id;
+        }
+
+        const existingTeams = await Team.find({ auctionId }).select('name').lean();
+        const existingNames = new Set(existingTeams.map(t => t.name.trim().toLowerCase()));
+
+        const validDocs = [];
+        const errors = [];
+
+        teams.forEach((item, index) => {
+            const rowNumber = index + 1;
+            const name = item.name ? String(item.name).trim() : '';
+            const budget = Number(item.budget);
+
+            if (!name) {
+                errors.push({ row: rowNumber, error: "Missing team name" });
+                return;
+            }
+            if (isNaN(budget) || budget <= 0) {
+                errors.push({ row: rowNumber, error: "Invalid or missing budget" });
+                return;
+            }
+
+            if (existingNames.has(name.toLowerCase())) {
+                errors.push({ row: rowNumber, error: `Duplicate team name: "${name}"` });
+                return;
+            }
+
+            existingNames.add(name.toLowerCase());
+            validDocs.push({
+                auctionId,
+                name,
+                budget,
+                spent: 0,
+                color: item.color || '#3b82f6',
+                logoText: item.logoText || '',
+                players: []
+            });
+        });
+
+        let createdTeams = [];
+        if (validDocs.length > 0) {
+            createdTeams = await Team.insertMany(validDocs);
+            createdTeams.forEach(t => AuctionEngine.addOrUpdateTeam(auctionId, t));
+            req.io.to(auctionId.toString()).emit('data_update', { auctionId: auctionId.toString() });
+        }
+
+        res.json({
+            success: true,
+            importedCount: createdTeams.length,
+            failedCount: errors.length,
+            errors,
+            teams: createdTeams
+        });
+    } catch (err) {
+        res.status(500).json({ error: err.message });
+    }
+};
+
 const updateTeam = async (req, res) => {
     try {
         const team = await Team.findByIdAndUpdate(req.params.id, req.body, { new: true });
@@ -68,6 +138,7 @@ const deleteTeam = async (req, res) => {
 
 module.exports = {
     createTeam,
+    bulkCreateTeams,
     updateTeam,
     deleteTeam
 };

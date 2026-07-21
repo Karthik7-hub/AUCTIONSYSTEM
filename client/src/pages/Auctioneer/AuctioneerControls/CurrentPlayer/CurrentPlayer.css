@@ -1,0 +1,119 @@
+/* CurrentPlayer Scoped Styles using BEM standard */
+
+.player-card {
+  background-color: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-2xl);
+  padding: var(--sp-6);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  position: relative;
+  overflow: hidden;
+  flex-shrink: 0;
+  gap: var(--sp-4);
+}
+
+.player-card__profile {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-3);
+  width: 100%;
+  flex: 1;
+}
+
+.player-card__avatar {
+  width: 3rem;
+  height: 3rem;
+  background-color: var(--accent-muted);
+  border-radius: var(--radius-xl);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--accent);
+  border: 1px solid var(--accent-border);
+  flex-shrink: 0;
+}
+
+.player-card__avatar-icon {
+  margin: auto;
+}
+
+.player-card__details {
+  min-width: 0;
+  flex: 1;
+}
+
+.player-card__name {
+  font-size: var(--text-card);
+  font-weight: var(--weight-black);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  margin: 0;
+}
+
+.player-card__meta {
+  display: flex;
+  gap: var(--sp-2);
+  font-size: 10px;
+  font-weight: bold;
+  text-transform: uppercase;
+  margin-top: var(--sp-0.5);
+  flex-wrap: wrap;
+}
+
+.player-card__bid-wrapper {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-6);
+  background-color: var(--bg-elevated);
+  border: 1px solid var(--border);
+  padding: var(--sp-3) var(--sp-6);
+  border-radius: var(--radius-xl);
+  flex-shrink: 0;
+}
+
+.player-card__bid-col {
+  display: flex;
+  flex-direction: column;
+}
+
+.player-card__bid-label {
+  font-size: 9px;
+  text-transform: uppercase;
+  font-weight: bold;
+  color: var(--text-muted);
+  letter-spacing: 0.05em;
+}
+
+.player-card__bid-value {
+  font-size: var(--text-card);
+  font-weight: var(--weight-black);
+  color: var(--success);
+  line-height: 1.1;
+}
+
+.player-card__leader-col {
+  border-left: 1px solid var(--border);
+  padding-left: var(--sp-6);
+  display: flex;
+  flex-direction: column;
+}
+
+.player-card__leader-label {
+  font-size: 9px;
+  text-transform: uppercase;
+  font-weight: bold;
+  color: var(--text-muted);
+  letter-spacing: 0.05em;
+}
+
+.player-card__leader-name {
+  font-weight: bold;
+  font-size: var(--text-secondary);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  max-width: 120px;
+}

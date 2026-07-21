@@ -1,59 +1,48 @@
-import React, { useState, useMemo, useEffect, useRef, useCallback } from 'react';
+import React, { useState, useMemo } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
-import confetti from 'canvas-confetti';
-import {
-    Trophy, Users, List, Gavel, DollarSign, TrendingUp,
-    CheckCircle, Pause, Mic2, LogIn, ChevronRight, ChevronDown, ChevronUp,
-    X, Wallet, UserCheck, Shield, Activity, Target, ListFilter
-} from 'lucide-react';
-import Button from '@components/ui/Button';
-import Badge from '@components/ui/Badge';
-import Loader from '@components/ui/Loader';
-import Modal from '@components/ui/Modal';
+import { Trophy, Users, List, Gavel, DollarSign } from 'lucide-react';
+import Loader from '@shared/components/Loader';
 
-// --- ASSETS & CONSTANTS ---
-const SOUND_URLS = {
-    sold: '/sounds/sold.mp3',
-    kaChing: '/sounds/kaChing.mp3',
-    bid: '/sounds/bid.mp3',
-};
+import ResultsPanel from './ResultsPanel';
+import LiveAuctionPanel from './LiveAuctionPanel';
+import TeamsPanel from './TeamsPanel';
+import PlayersPanel from './PlayersPanel';
+import ActivityPanel from './ActivityPanel';
+import './ViewerScreen.css';
 
-const ROLE_ICONS = {
-    'Batsman': <Target className="w-3 h-3" />,
-    'Bowler': <Activity className="w-3 h-3" />,
-    'All Rounder': <Shield className="w-3 h-3" />,
-    'Wicket Keeper': <UserCheck className="w-3 h-3" />,
-    'default': <Users className="w-3 h-3" />
-};
+function NavButton({ active, onClick, icon: Icon, label, isLive }) {
+    return (
+        <button 
+            onClick={onClick} 
+            className={`viewer__nav-btn ${active ? 'viewer__nav-btn--active' : ''}`}
+        >
+            <Icon className={`w-4 h-4 ${isLive ? 'text-red-500 animate-pulse' : ''}`} style={{ marginRight: 'var(--sp-2)' }} />
+            {label}
+            {isLive && <span className="viewer__live-dot" style={{ marginLeft: 'var(--sp-2)' }} />}
+        </button>
+    );
+}
 
-const getContrastColor = (hexColor) => {
-    if (!hexColor || hexColor.charAt(0) !== '#') return '#ffffff';
-    const r = parseInt(hexColor.slice(1, 3), 16);
-    const g = parseInt(hexColor.slice(3, 5), 16);
-    const b = parseInt(hexColor.slice(5, 7), 16);
-    const yiq = ((r * 299) + (g * 587) + (b * 114)) / 1000;
-    return (yiq >= 128) ? '#000000' : '#ffffff';
-};
+function MobileNavButton({ active, onClick, icon: Icon, label, isLive }) {
+    return (
+        <button 
+            onClick={onClick} 
+            className={`viewer__mobile-nav-btn ${active ? 'viewer__mobile-nav-btn--active' : ''}`}
+        >
+            <div className="viewer__mobile-nav-icon-wrapper">
+                <Icon className={`w-5 h-5 ${isLive ? 'text-red-500 animate-pulse' : ''}`} />
+                {isLive && <span className="viewer__mobile-nav-badge" />}
+            </div>
+            <span className="viewer__mobile-nav-label">{label}</span>
+        </button>
+    );
+}
 
-export default function ViewerScreen({ data, liveState, auctionId, config, isAuthenticated }) {
-    const navigate = useNavigate();
+export default function ViewerScreen({ data, liveState, auctionId, config }) {
     const [searchParams, setSearchParams] = useSearchParams();
-    // --- STATE ---
+
     const activeTab = searchParams.get('tab') || 'live';
     const setActiveTab = (tab) => setSearchParams({ tab }, { replace: true });
-    const [viewStatus, setViewStatus] = useState('OPEN');
-    const [selectedCategory, setSelectedCategory] = useState('All');
-    const [selectedTeam, setSelectedTeam] = useState(null);
-    const [feedSort, setFeedSort] = useState('recent');
-    const [isSortMenuOpen, setIsSortMenuOpen] = useState(false);
-    const [historyPlayer, setHistoryPlayer] = useState(null);
-
-    // --- REFS (State Tracking) ---
-    const prevStatusRef = useRef(liveState?.status);
-    const prevHistoryLengthRef = useRef(liveState?.bidHistory?.length || 0);
-    const lastCelebrationRef = useRef(0);
-    const audioUnlockedRef = useRef(false);
-    const audioInstancesRef = useRef({});
 
     // --- ⚡ PERFORMANCE: MEMOIZED LOOKUPS (O(1) Access) ---
     const safePlayers = useMemo(() => data?.players || [], [data?.players]);
@@ -80,184 +69,19 @@ export default function ViewerScreen({ data, liveState, auctionId, config, isAut
         return map;
     }, [safeTeams, playerMap]);
 
-    const categories = useMemo(() => {
-        if (config?.categories?.length) return ['All', ...config.categories];
-        if (safePlayers.length === 0) return ['All'];
-        const cats = new Set(safePlayers.map(p => p.category || 'Uncategorized'));
-        return ['All', ...cats];
-    }, [safePlayers, config]);
-
-    // --- 🔊 AUDIO ENGINE (Mobile Safe) ---
-    useEffect(() => {
-        Object.entries(SOUND_URLS).forEach(([key, url]) => {
-            audioInstancesRef.current[key] = new Audio(url);
-        });
-    }, []);
-
-    const unlockAudio = useCallback(() => {
-        if (audioUnlockedRef.current) return;
-
-        Object.values(audioInstancesRef.current).forEach(audio => {
-            audio.volume = 0;
-            audio.load(); // Force network load
-            const playPromise = audio.play();
-            if (playPromise !== undefined) {
-                playPromise.then(() => {
-                    audio.pause();
-                    audio.currentTime = 0;
-                    audio.volume = 0.5; // Reset volume
-                    audioUnlockedRef.current = true; // Mark as successfully unlocked
-                }).catch(err => {
-                    console.log("Audio unlock play failed:", err);
-                    audio.volume = 0.5; // Reset volume even on failure so it can play later
-                });
-            } else {
-                audio.pause();
-                audio.currentTime = 0;
-                audio.volume = 0.5;
-                audioUnlockedRef.current = true;
-            }
-        });
-    }, []);
-
-    // Unlock on first interaction (click/touch/keypress)
-    useEffect(() => {
-        const handleInteraction = () => unlockAudio();
-        window.addEventListener('click', handleInteraction);
-        window.addEventListener('touchstart', handleInteraction);
-        window.addEventListener('keydown', handleInteraction);
-        return () => {
-            window.removeEventListener('click', handleInteraction);
-            window.removeEventListener('touchstart', handleInteraction);
-            window.removeEventListener('keydown', handleInteraction);
-        };
-    }, [unlockAudio]);
-
-    const playSound = useCallback((type) => {
-        const sound = audioInstancesRef.current[type];
-        if (sound) {
-            sound.currentTime = 0;
-            sound.play().catch(e => console.warn('Audio blocked:', e));
-        }
-    }, []);
-
-    // --- EFFECTS & ANIMATION ---
-    const triggerCelebration = useCallback(() => {
-        const now = Date.now();
-        if (now - lastCelebrationRef.current < 2000) return;
-        lastCelebrationRef.current = now;
-
-        playSound('kaChing');
-        setTimeout(() => playSound('sold'), 300);
-
-        const duration = 3000;
-        const end = Date.now() + duration;
-        (function frame() {
-            confetti({ particleCount: 5, angle: 60, spread: 55, origin: { x: 0 }, colors: ['#22c55e', '#eab308', '#ffffff'] });
-            confetti({ particleCount: 5, angle: 120, spread: 55, origin: { x: 1 }, colors: ['#22c55e', '#eab308', '#ffffff'] });
-            if (Date.now() < end) requestAnimationFrame(frame);
-        }());
-    }, [playSound]);
-
-    useEffect(() => {
-        const currentStatus = liveState?.status;
-        const currentHistoryLength = liveState?.bidHistory?.length || 0;
-
-        if (currentStatus === 'SOLD' && prevStatusRef.current !== 'SOLD') {
-            triggerCelebration();
-        }
-        
-        // Play sound if a new bid entry is appended to the history
-        if (currentStatus === 'ACTIVE' && currentHistoryLength > prevHistoryLengthRef.current) {
-            playSound('bid');
-        }
-
-        prevStatusRef.current = currentStatus;
-        prevHistoryLengthRef.current = currentHistoryLength;
-    }, [liveState, playSound, triggerCelebration]);
-
     if (!data || !data.players) return (
         <Loader message="Loading Resources..." fullScreen />
     );
+
     const isCompleted = config?.status === 'completed' || config?.isActive === false;
 
-    // Calculate Completed Statistics
-    const soldPlayersList = useMemo(() => safePlayers.filter(p => p.isSold), [safePlayers]);
-    const unsoldPlayersList = useMemo(() => safePlayers.filter(p => p.isUnsold), [safePlayers]);
-    const soldCount = soldPlayersList.length;
-    const unsoldCount = unsoldPlayersList.length;
-    const totalSpent = useMemo(() => soldPlayersList.reduce((sum, p) => sum + (p.soldPrice || 0), 0), [soldPlayersList]);
-
-    const sortedFeedPlayers = useMemo(() => {
-        const soldPlayers = safePlayers.filter(p => p.isSold);
-        if (feedSort === 'recent') {
-            return [...soldPlayers].reverse();
-        }
-        if (feedSort === 'oldest') {
-            return [...soldPlayers];
-        }
-        if (feedSort === 'price-desc') {
-            return [...soldPlayers].sort((a, b) => (b.soldPrice || 0) - (a.soldPrice || 0));
-        }
-        if (feedSort === 'price-asc') {
-            return [...soldPlayers].sort((a, b) => (a.soldPrice || 0) - (b.soldPrice || 0));
-        }
-        if (feedSort === 'name-asc') {
-            return [...soldPlayers].sort((a, b) => a.name.localeCompare(b.name));
-        }
-        return soldPlayers;
-    }, [safePlayers, feedSort]);
-
-    const spenderTeam = useMemo(() => {
-        if (safeTeams.length === 0) return null;
-        return [...safeTeams].sort((a, b) => {
-            const aSquad = squadMap.get(a._id) || [];
-            const bSquad = squadMap.get(b._id) || [];
-            const aSpent = aSquad.reduce((sum, p) => sum + (p.soldPrice || 0), 0);
-            const bSpent = bSquad.reduce((sum, p) => sum + (p.soldPrice || 0), 0);
-            return bSpent - aSpent;
-        })[0];
-    }, [safeTeams, squadMap]);
-
-    const spenderSpent = useMemo(() => {
-        if (!spenderTeam) return 0;
-        return (squadMap.get(spenderTeam._id) || []).reduce((sum, p) => sum + (p.soldPrice || 0), 0);
-    }, [spenderTeam, squadMap]);
-
-    const mostExpensivePlayer = useMemo(() => {
-        if (soldPlayersList.length === 0) return null;
-        return [...soldPlayersList].sort((a, b) => (b.soldPrice || 0) - (a.soldPrice || 0))[0];
-    }, [soldPlayersList]);
-
-    const buyerTeam = useMemo(() => {
-        if (!mostExpensivePlayer) return null;
-        return teamMap.get(mostExpensivePlayer.soldTo);
-    }, [mostExpensivePlayer, teamMap]);
-
-    const largestSquadTeam = useMemo(() => {
-        if (safeTeams.length === 0) return null;
-        return [...safeTeams].sort((a, b) => {
-            const aLen = (squadMap.get(a._id) || []).length;
-            const bLen = (squadMap.get(b._id) || []).length;
-            return bLen - aLen;
-        })[0];
-    }, [safeTeams, squadMap]);
-
-    const largestSquadCount = useMemo(() => {
-        if (!largestSquadTeam) return 0;
-        return (squadMap.get(largestSquadTeam._id) || []).length;
-    }, [largestSquadTeam, squadMap]);
-
-    const topPurchases = useMemo(() => {
-        return [...soldPlayersList].sort((a, b) => (b.soldPrice || 0) - (a.soldPrice || 0)).slice(0, 5);
-    }, [soldPlayersList]);
     return (
-        <div className="viewer-screen theme-dark">
+        <div className="viewer theme-dark">
 
             {/* DESKTOP HEADER */}
-            <header className="viewer-header md-block hidden">
-                <div className="viewer-header-content">
-                    <nav className="viewer-desktop-nav">
+            <header className="viewer__header md-block hidden">
+                <div className="viewer__header-content">
+                    <nav className="viewer__desktop-nav">
                         <NavButton 
                             active={activeTab === 'live'} 
                             onClick={() => setActiveTab('live')} 
@@ -273,30 +97,19 @@ export default function ViewerScreen({ data, liveState, auctionId, config, isAut
             </header>
 
             {/* MAIN CONTENT AREA */}
-            <main className={`viewer-main-content${activeTab === 'live' && !isCompleted ? ' live-tab-active' : ''}`}>
-                <div className="container viewer-main-content-container">
+            <main className={`viewer__main ${activeTab === 'live' && !isCompleted ? 'viewer__main--live-active' : ''}`}>
+                <div className="container viewer__container">
 
-                    {/* LIVE TAB */}
                     {activeTab === 'live' && (
                         isCompleted ? (
-                            <TournamentResultsView
-                                safeTeams={safeTeams}
-                                safePlayers={safePlayers}
+                            <ResultsPanel
+                                teams={safeTeams}
+                                players={safePlayers}
                                 squadMap={squadMap}
                                 teamMap={teamMap}
-                                spenderTeam={spenderTeam}
-                                spenderSpent={spenderSpent}
-                                mostExpensivePlayer={mostExpensivePlayer}
-                                buyerTeam={buyerTeam}
-                                largestSquadTeam={largestSquadTeam}
-                                largestSquadCount={largestSquadCount}
-                                topPurchases={topPurchases}
-                                soldCount={soldCount}
-                                unsoldCount={unsoldCount}
-                                totalSpent={totalSpent}
                             />
                         ) : (
-                            <LiveAuctionView
+                            <LiveAuctionPanel
                                 liveState={liveState}
                                 playerMap={playerMap}
                                 teamMap={teamMap}
@@ -304,296 +117,35 @@ export default function ViewerScreen({ data, liveState, auctionId, config, isAut
                         )
                     )}
 
-                    {/* TEAMS TAB */}
                     {activeTab === 'teams' && (
-                        <div className="grid grid-cols-1 grid-cols-md-2 grid-cols-lg-3 gap-6">
-                            {safeTeams.map((team) => {
-                                const cleanSquad = squadMap.get(team._id) || [];
-                                const realSpent = cleanSquad.reduce((total, p) => total + (p.soldPrice || 0), 0);
-                                const realRemaining = team.budget - realSpent;
-
-                                return (
-                                    <div
-                                        key={team._id}
-                                        onClick={() => setSelectedTeam(team)}
-                                        onKeyDown={(e) => e.key === 'Enter' && setSelectedTeam(team)}
-                                        tabIndex="0"
-                                        role="button"
-                                        aria-label={`View details for ${team.name}`}
-                                        className="card viewer-team-item"
-                                        style={{ height: '500px', padding: 0 }}
-                                    >
-                                        <div className="viewer-team-card-header" style={{ backgroundColor: team.color }}>
-                                            <h3 className="viewer-team-card-title">{team.name}</h3>
-                                            <div className="viewer-team-card-subtitle">
-                                                {cleanSquad.length} Players
-                                                <ChevronRight className="w-4 h-4" />
-                                            </div>
-                                            <Trophy className="viewer-team-card-trophy-glow" />
-                                        </div>
-
-                                        <div className="viewer-team-card-purse-row">
-                                            <div className="font-bold" style={{ color: 'var(--text-secondary-dark)' }}>Purse: <span style={{ color: realRemaining < 0 ? 'var(--red-500)' : 'var(--green-500)' }}>₹{realRemaining}L</span></div>
-                                            <div className="font-bold" style={{ color: 'var(--text-secondary-dark)' }}>Spent: <span style={{ color: 'var(--blue-500)' }}>₹{realSpent}L</span></div>
-                                        </div>
-
-                                        <div className="viewer-team-card-players-list">
-                                            {cleanSquad.length === 0 ? (
-                                                <div className="viewer-team-card-players-empty">
-                                                    <Users className="w-6 h-6 mb-2 opacity-50" />
-                                                    Empty Squad
-                                                </div>
-                                            ) : (
-                                                cleanSquad.map(p => (
-                                                    <div key={p._id} className="viewer-team-card-player-row">
-                                                        <div className="viewer-team-card-player-info">
-                                                            <div style={{ color: 'var(--text-secondary-dark)' }}>{ROLE_ICONS[p.role] || ROLE_ICONS['default']}</div>
-                                                            <div>
-                                                                <div className="viewer-team-card-player-name">{p.name}</div>
-                                                                <div className="viewer-team-card-player-role">{p.role}</div>
-                                                            </div>
-                                                        </div>
-                                                        <div className="viewer-team-card-player-price">₹{p.soldPrice}L</div>
-                                                    </div>
-                                                ))
-                                            )}
-                                        </div>
-                                    </div>
-                                );
-                            })}
-                        </div>
+                        <TeamsPanel
+                            teams={safeTeams}
+                            players={safePlayers}
+                            squadMap={squadMap}
+                            config={config}
+                        />
                     )}
 
-                    {/* PLAYERS TAB */}
                     {activeTab === 'players' && (
-                        <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--sp-6)' }}>
-                            <div className="viewer-pool-sticky-header">
-                                <div className="nav-tabs" style={{ width: '100%' }}>
-                                    {['OPEN', 'SOLD', 'UNSOLD', 'ALL'].map(status => (
-                                        <button key={status} onClick={() => setViewStatus(status)} className={`nav-tab-btn ${viewStatus === status ? 'nav-tab-btn-active' : ''}`} style={{ flex: 1, justifyContent: 'center' }}>{status}</button>
-                                    ))}
-                                </div>
-                                <div className="filters-strip" style={{ margin: 0, padding: 0 }}>
-                                    {categories.map(cat => (
-                                        <button
-                                            key={cat}
-                                            onClick={() => setSelectedCategory(cat)}
-                                            className={`filter-btn ${selectedCategory === cat ? 'filter-btn-active' : ''}`}
-                                        >
-                                            {cat}
-                                        </button>
-                                    ))}
-                                </div>
-                            </div>
-
-                            {(() => {
-                                const filtered = safePlayers
-                                    .filter(p => {
-                                        if (viewStatus === 'OPEN') return !p.isSold && !p.isUnsold;
-                                        if (viewStatus === 'SOLD') return p.isSold;
-                                        if (viewStatus === 'UNSOLD') return p.isUnsold;
-                                        return true;
-                                    })
-                                    .filter(p => selectedCategory === 'All' || p.category === selectedCategory);
-
-                                if (filtered.length === 0) {
-                                    return (
-                                        <div className="landing-empty-container" style={{ gridColumn: 'unset' }}>
-                                            <div className="landing-empty-icon-bg">
-                                                <Users className="w-6 h-6" />
-                                            </div>
-                                            <h3 className="landing-empty-title">
-                                                {viewStatus === 'OPEN' ? 'No Open Players' : viewStatus === 'SOLD' ? 'No Sold Players' : 'No Unsold Players'}
-                                            </h3>
-                                            <p className="landing-empty-subtitle">
-                                                {viewStatus === 'OPEN'
-                                                    ? 'All players have been sold or marked unsold. Switch to "ALL" to see everyone.'
-                                                    : `No players match the current filter.`}
-                                            </p>
-                                        </div>
-                                    );
-                                }
-
-                                return (
-                                    <div className="grid grid-cols-1 grid-cols-md-2 grid-cols-lg-4 gap-4">
-                                        {filtered.map(p => {
-                                            const soldToTeam = p.isSold ? teamMap.get(p.soldTo) : null;
-                                            return (
-                                                <div key={p._id} className="card player-item-card">
-                                                    {p.isSold && <div className="viewer-pool-check-icon"><CheckCircle className="w-4 h-4" /></div>}
-                                                    <div className="viewer-pool-card-header">
-                                                        <span className="viewer-pool-card-header-badge">
-                                                            {ROLE_ICONS[p.role] || ROLE_ICONS['default']}
-                                                            {p.category} • {p.role}
-                                                        </span>
-                                                        <h3 className={`viewer-pool-card-title ${p.isUnsold ? 'text-muted line-through' : ''}`}>{p.name}</h3>
-                                                    </div>
-                                                    <div className="viewer-pool-card-footer">
-                                                        <div>
-                                                            {p.isSold ? (
-                                                                <span style={{
-                                                                    backgroundColor: soldToTeam?.color || 'var(--bg-elevated)',
-                                                                    color: getContrastColor(soldToTeam?.color),
-                                                                    padding: '2px 8px',
-                                                                    borderRadius: 'var(--radius-full)',
-                                                                    fontSize: '10px',
-                                                                    fontWeight: 'bold',
-                                                                    textTransform: 'uppercase',
-                                                                    display: 'inline-block',
-                                                                    maxWidth: '120px',
-                                                                    overflow: 'hidden',
-                                                                    textOverflow: 'ellipsis',
-                                                                    whiteSpace: 'nowrap',
-                                                                    border: '1px solid var(--border-strong)'
-                                                                }}>
-                                                                    {soldToTeam?.name}
-                                                                </span>
-                                                            ) : p.isUnsold ? (
-                                                                <Badge variant="danger">UNSOLD</Badge>
-                                                            ) : (
-                                                                <Badge variant="info">OPEN</Badge>
-                                                            )}
-                                                        </div>
-                                                        <div className="font-mono" style={{ fontWeight: 'bold', fontSize: 'var(--text-secondary)', color: p.isSold ? 'var(--success)' : 'var(--text-muted)' }}>
-                                                            ₹{p.isSold ? p.soldPrice : p.basePrice}L
-                                                        </div>
-                                                    </div>
-                                                </div>
-                                            );
-                                        })}
-                                    </div>
-                                );
-                            })()}
-                        </div>
+                        <PlayersPanel
+                            players={safePlayers}
+                            config={config}
+                            teamMap={teamMap}
+                        />
                     )}
 
-                    {/* FEED TAB */}
                     {activeTab === 'sold' && (
-                        <div className="card viewer-feed-card">
-                            <div className="viewer-feed-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 'var(--sp-2)' }}>
-                                <span>Live Feed</span>
-                                
-                                {/* Custom Sorting Dropdown */}
-                                <div style={{ position: 'relative', textTransform: 'none', letterSpacing: 'normal' }}>
-                                    {isSortMenuOpen && (
-                                        <div 
-                                            onClick={() => setIsSortMenuOpen(false)} 
-                                            style={{ position: 'fixed', inset: 0, zIndex: 90, cursor: 'default' }}
-                                        />
-                                    )}
-                                    <button 
-                                        onClick={() => setIsSortMenuOpen(!isSortMenuOpen)}
-                                        style={{
-                                            display: 'flex',
-                                            alignItems: 'center',
-                                            gap: 'var(--sp-2)',
-                                            padding: 'var(--sp-1.5) var(--sp-3)',
-                                            borderRadius: 'var(--radius-lg)',
-                                            backgroundColor: 'var(--bg-elevated)',
-                                            border: '1px solid var(--border)',
-                                            color: 'var(--text-secondary)',
-                                            fontSize: '12px',
-                                            fontWeight: 'bold',
-                                            transition: 'var(--transition-fast)',
-                                            cursor: 'pointer',
-                                            zIndex: 91,
-                                            position: 'relative'
-                                        }}
-                                        className="tr-hover"
-                                    >
-                                        <ListFilter className="w-4 h-4" />
-                                        <span>
-                                            {feedSort === 'recent' && 'Recent'}
-                                            {feedSort === 'oldest' && 'Oldest'}
-                                            {feedSort === 'price-desc' && 'Price: High-Low'}
-                                            {feedSort === 'price-asc' && 'Price: Low-High'}
-                                            {feedSort === 'name-asc' && 'Name: A-Z'}
-                                        </span>
-                                        <ChevronDown className="w-3.5 h-3.5" style={{ opacity: 0.7 }} />
-                                    </button>
-
-                                    {isSortMenuOpen && (
-                                        <div style={{
-                                            position: 'absolute',
-                                            right: 0,
-                                            top: 'calc(100% + var(--sp-2))',
-                                            backgroundColor: 'var(--bg-elevated)',
-                                            border: '1px solid var(--border-strong)',
-                                            borderRadius: 'var(--radius-xl)',
-                                            boxShadow: 'var(--shadow-lg)',
-                                            padding: 'var(--sp-1.5)',
-                                            zIndex: 95,
-                                            minWidth: '180px',
-                                            display: 'flex',
-                                            flexDirection: 'column',
-                                            gap: '1px'
-                                        }}>
-                                            {[
-                                                { value: 'recent', label: 'Recent Purchases' },
-                                                { value: 'oldest', label: 'Oldest Purchases' },
-                                                { value: 'price-desc', label: 'Price: High to Low' },
-                                                { value: 'price-asc', label: 'Price: Low to High' },
-                                                { value: 'name-asc', label: 'Name: A to Z' }
-                                            ].map(opt => (
-                                                <button
-                                                    key={opt.value}
-                                                    onClick={() => {
-                                                        setFeedSort(opt.value);
-                                                        setIsSortMenuOpen(false);
-                                                    }}
-                                                    style={{
-                                                        padding: 'var(--sp-2) var(--sp-3)',
-                                                        borderRadius: 'var(--radius-md)',
-                                                        fontSize: '11px',
-                                                        textAlign: 'left',
-                                                        color: feedSort === opt.value ? 'var(--accent-light)' : 'var(--text-secondary)',
-                                                        backgroundColor: feedSort === opt.value ? 'var(--bg-active)' : 'transparent',
-                                                        fontWeight: feedSort === opt.value ? 'bold' : 'normal',
-                                                        width: '100%',
-                                                        cursor: 'pointer'
-                                                    }}
-                                                    className="tr-hover"
-                                                >
-                                                    {opt.label}
-                                                </button>
-                                            ))}
-                                        </div>
-                                    )}
-                                </div>
-                            </div>
-                            <div className="flex-col">
-                                {sortedFeedPlayers.map(p => {
-                                    const team = teamMap.get(p.soldTo);
-                                    return (
-                                        <div key={p._id} className="viewer-feed-row tr-hover" onClick={() => setHistoryPlayer(p)} style={{ cursor: 'pointer' }}>
-                                            <div className="viewer-feed-row-inner">
-                                                <div className="viewer-feed-avatar">{p.name.charAt(0)}</div>
-                                                <div><div className="viewer-team-card-player-name">{p.name}</div><div style={{ fontSize: '10px', color: 'var(--text-muted-dark)' }}>{p.role}</div></div>
-                                            </div>
-                                            <div className="text-center" style={{ textAlign: 'right' }}>
-                                                <div className="viewer-feed-badge-val" style={{ backgroundColor: team?.color || '#555', color: getContrastColor(team?.color) }}>{team?.name}</div>
-                                                <div className="viewer-feed-price">₹{p.soldPrice}L</div>
-                                            </div>
-                                        </div>
-                                    );
-                                })}
-                            </div>
-                        </div>
+                        <ActivityPanel
+                            players={safePlayers}
+                            teamMap={teamMap}
+                        />
                     )}
+
                 </div>
             </main>
 
-            {/* --- TEAM DETAIL MODAL POPUP --- */}
-            {selectedTeam && (
-                <TeamDetailModal
-                    team={selectedTeam}
-                    squad={squadMap.get(selectedTeam._id) || []}
-                    onClose={() => setSelectedTeam(null)}
-                />
-            )}
-
             {/* === MOBILE BOTTOM NAV === */}
-            <div className="viewer-mobile-bottom-nav">
+            <div className="viewer__mobile-nav">
                 <MobileNavButton 
                     active={activeTab === 'live'} 
                     onClick={() => setActiveTab('live')} 
@@ -606,597 +158,6 @@ export default function ViewerScreen({ data, liveState, auctionId, config, isAut
                 <MobileNavButton active={activeTab === 'sold'} onClick={() => setActiveTab('sold')} icon={DollarSign} label="Sold" />
             </div>
 
-            {/* Player Bidding History Modal */}
-            <Modal isOpen={!!historyPlayer} onClose={() => setHistoryPlayer(null)} title="Bidding History">
-                <div style={{ padding: 'var(--sp-2)' }}>
-                    <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 'var(--sp-4)', paddingBottom: 'var(--sp-3)', borderBottom: '1px solid var(--border)' }}>
-                        <div>
-                            <div style={{ fontSize: 'var(--text-sub)', fontWeight: 'bold' }}>{historyPlayer?.name}</div>
-                            <div style={{ fontSize: 'var(--text-secondary)', color: 'var(--text-muted)' }}>{historyPlayer?.role} • {historyPlayer?.category}</div>
-                        </div>
-                        <div style={{ textAlign: 'right' }}>
-                            <div style={{ fontSize: 'var(--text-sub)', fontWeight: 'bold', color: 'var(--success)', fontFamily: 'var(--font-mono)' }}>₹{historyPlayer?.soldPrice}L</div>
-                            <div style={{ fontSize: '10px', color: 'var(--text-muted)' }}>Sold Price</div>
-                        </div>
-                    </div>
-
-                    <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--sp-2)', overflowY: 'auto' }}>
-                        {historyPlayer?.bidHistory && historyPlayer.bidHistory.length > 0 ? (
-                            [...historyPlayer.bidHistory].reverse().map((hist, idx) => {
-                                const biddingTeam = teamMap.get(hist.leader);
-                                return (
-                                    <div key={idx} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: 'var(--sp-3)', backgroundColor: 'var(--bg-elevated)', borderRadius: 'var(--radius-md)', border: '1px solid var(--border)' }}>
-                                        <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--sp-2)' }}>
-                                            {biddingTeam ? (
-                                                <>
-                                                    <div style={{ width: '1.5rem', height: '1.5rem', borderRadius: '50%', backgroundColor: biddingTeam.color, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '10px', fontWeight: 'bold', color: '#ffffff' }}>
-                                                        {biddingTeam.name.charAt(0)}
-                                                    </div>
-                                                    <span style={{ fontSize: 'var(--text-secondary)', fontWeight: 'var(--weight-semibold)', color: 'var(--text-primary)' }}>{biddingTeam.name}</span>
-                                                </>
-                                            ) : (
-                                                <span style={{ fontSize: 'var(--text-secondary)', color: 'var(--text-muted)' }}>Base Price</span>
-                                            )}
-                                        </div>
-                                        <span style={{ fontSize: 'var(--text-secondary)', fontWeight: 'bold', color: 'var(--success)', fontFamily: 'var(--font-mono)' }}>₹{hist.bid ?? historyPlayer?.basePrice ?? 20}L</span>
-                                    </div>
-                                );
-                            })
-                        ) : (
-                            <div style={{ fontSize: 'var(--text-secondary)', color: 'var(--text-muted)', fontStyle: 'italic', textAlign: 'center', padding: 'var(--sp-4) 0' }}>No bid details saved for this player round.</div>
-                        )}
-                    </div>
-                </div>
-            </Modal>
-        </div>
-    );
-}
-
-// --- SUB-COMPONENTS ---
-
-function TeamDetailModal({ team, squad, onClose }) {
-    const [isStatsExpanded, setIsStatsExpanded] = useState(true);
-
-    const realSpent = useMemo(() => squad.reduce((total, p) => total + (p.soldPrice || 0), 0), [squad]);
-    const realRemaining = team.budget - realSpent;
-
-    const composition = useMemo(() => {
-        const counts = { Batsman: 0, Bowler: 0, 'All Rounder': 0, 'Wicket Keeper': 0 };
-        squad.forEach(p => {
-            if (counts[p.role] !== undefined) counts[p.role]++;
-        });
-        return counts;
-    }, [squad]);
-
-    return (
-        <Modal
-            isOpen={true}
-            onClose={onClose}
-            maxWidth="32rem"
-            bannerColor={team.color}
-            title={
-                <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--sp-3)' }}>
-                    <div style={{ color: 'var(--warning)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                        <Trophy className="w-6 h-6" />
-                    </div>
-                    <div>
-                        <h2 style={{ fontSize: 'var(--text-card)', fontWeight: 'var(--weight-black)', margin: 0, color: 'var(--text-primary)' }}>{team.name}</h2>
-                        <div style={{ color: 'var(--text-muted)', fontWeight: 'bold', fontSize: 'var(--text-micro)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Team Overview</div>
-                    </div>
-                </div>
-            }
-        >
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--sp-4)', padding: 'var(--sp-2) 0' }}>
-                
-                {/* Collapsible Top Stats Section */}
-                {isStatsExpanded && (
-                    <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--sp-4)' }} className="animate-fade-in">
-                        {/* Stats Row */}
-                        <div className="modal-stats-grid" style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 'var(--sp-2)', textAlign: 'center', padding: '0 var(--sp-2)' }}>
-                            <div className="stats-matrix-card" style={{ padding: 'var(--sp-1-5) var(--sp-2)', borderRadius: 'var(--radius-md)' }}>
-                                <div className="stats-matrix-label" style={{ fontSize: '9px', justifyContent: 'center' }}>Players</div>
-                                <div className="stats-matrix-value" style={{ fontSize: 'var(--text-secondary)', marginTop: '1px', fontWeight: 'bold' }}>{squad.length}</div>
-                            </div>
-                            <div className="stats-matrix-card" style={{ padding: 'var(--sp-1-5) var(--sp-2)', borderRadius: 'var(--radius-md)' }}>
-                                <div className="stats-matrix-label" style={{ fontSize: '9px', justifyContent: 'center' }}>Purse Left</div>
-                                <div className="stats-matrix-value font-mono" style={{ fontSize: 'var(--text-secondary)', marginTop: '1px', color: realRemaining < 0 ? 'var(--danger)' : 'var(--success)', fontWeight: 'bold' }}>
-                                    ₹{realRemaining}L
-                                </div>
-                            </div>
-                            <div className="stats-matrix-card" style={{ padding: 'var(--sp-1-5) var(--sp-2)', borderRadius: 'var(--radius-md)' }}>
-                                <div className="stats-matrix-label" style={{ fontSize: '9px', justifyContent: 'center' }}>Spent</div>
-                                <div className="stats-matrix-value font-mono" style={{ fontSize: 'var(--text-secondary)', marginTop: '1px', color: 'var(--accent-light)', fontWeight: 'bold' }}>₹{realSpent}L</div>
-                            </div>
-                        </div>
-
-                        {/* Composition progress bars */}
-                        <div className="viewer-modal-bar-counts" style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: 'var(--sp-3)', padding: '0 var(--sp-2)' }}>
-                            {Object.entries(composition).map(([role, count]) => {
-                                const colorMap = { 'Batsman': 'var(--blue-500)', 'Bowler': 'var(--green-500)', 'All Rounder': 'var(--purple-500)', 'Wicket Keeper': 'var(--yellow-500)' };
-                                const limitMap = { 'Batsman': 8, 'Bowler': 8, 'All Rounder': 8, 'Wicket Keeper': 2 };
-                                const limit = limitMap[role] || 8;
-                                return (
-                                    <div key={role} className="viewer-modal-bar-col" style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
-                                        <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 'var(--text-micro)', fontWeight: 'bold' }}>
-                                            <span style={{ color: 'var(--text-muted)' }}>{role}</span>
-                                            <span>{count} / {limit}</span>
-                                        </div>
-                                        <div className="progress-bar-bg" style={{ height: '4px' }}>
-                                            <div className="progress-bar-fill" style={{ width: `${Math.min(100, (count / limit) * 100)}%`, backgroundColor: colorMap[role] || 'var(--slate-500)' }}></div>
-                                        </div>
-                                    </div>
-                                );
-                            })}
-                        </div>
-                    </div>
-                )}
-
-                {/* Squad List */}
-                <div className="modal-squad-section" style={{ borderTop: '1px solid var(--border)', paddingTop: 'var(--sp-3)', display: 'flex', flexDirection: 'column', gap: 'var(--sp-3)' }}>
-                    <div className="viewer-modal-list-header" style={{ padding: '0 var(--sp-2)', fontWeight: 'bold', fontSize: 'var(--text-secondary)', color: 'var(--text-muted)', display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderBottom: '1px solid var(--border)', paddingBottom: 'var(--sp-2)', marginBottom: 'var(--sp-1)' }}>
-                        <span>Acquired Players ({squad.length})</span>
-                        <button 
-                            onClick={() => setIsStatsExpanded(!isStatsExpanded)}
-                            style={{ display: 'flex', alignItems: 'center', gap: 'var(--sp-1)', color: 'var(--accent)', fontSize: 'var(--text-micro)', fontWeight: 'bold', cursor: 'pointer' }}
-                        >
-                            {isStatsExpanded ? (
-                                <>Hide Stats <ChevronUp className="w-3.5 h-3.5" /></>
-                            ) : (
-                                <>Show Stats <ChevronDown className="w-3.5 h-3.5" /></>
-                            )}
-                        </button>
-                    </div>
-                    {squad.length === 0 ? (
-                        <div style={{ height: '8rem', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', color: 'var(--text-muted)', border: '2px dashed var(--border)', borderRadius: 'var(--radius-xl)', margin: '0 var(--sp-2)', padding: 'var(--sp-4)', textAlign: 'center' }}>
-                            <Users className="w-6 h-6 mb-2 opacity-50" />
-                            <div style={{ fontSize: 'var(--text-caption)', fontWeight: 'bold', color: 'var(--text-primary)' }}>No players acquired yet.</div>
-                            <div style={{ fontSize: '10px', color: 'var(--text-muted)', marginTop: '4px' }}>Players purchased during the auction will appear here.</div>
-                        </div>
-                    ) : (
-                        <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--sp-3)', maxHeight: isStatsExpanded ? '380px' : '580px', overflowY: 'auto', padding: '0 var(--sp-2)', transition: 'max-height 0.2s ease-in-out' }}>
-                            {squad.map((p, idx) => (
-                                <div key={p._id} className="card tr-hover" style={{ padding: 'var(--sp-3)', display: 'flex', flexDirection: 'column', gap: '4px', minHeight: 'auto', borderRadius: 'var(--radius-lg)', background: 'var(--bg-elevated)', border: '1px solid var(--border)' }}>
-                                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                                        <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--sp-3)' }}>
-                                            <span style={{ fontFamily: 'var(--font-mono)', fontWeight: 'bold', color: 'var(--text-muted)', fontSize: 'var(--text-caption)', minWidth: '1.5rem' }}>#{idx + 1}</span>
-                                            <span style={{ fontWeight: 'bold', fontSize: 'var(--text-secondary)' }}>{p.name}</span>
-                                        </div>
-                                        <span className="font-mono" style={{ fontWeight: 'bold', color: 'var(--success)', fontSize: 'var(--text-secondary)' }}>₹{p.soldPrice}L</span>
-                                    </div>
-                                    <div style={{ paddingLeft: '2.25rem', fontSize: '10px', color: 'var(--text-muted)' }}>
-                                        {p.role} • {p.category}
-                                    </div>
-                                </div>
-                            ))}
-                        </div>
-                    )}
-                </div>
-
-            </div>
-        </Modal>
-    );
-}
-
-
-function NavButton({ active, onClick, icon: Icon, label, isLive }) {
-    return (
-        <button onClick={onClick} className={`nav-tab-btn ${active ? 'nav-tab-btn-active' : ''}`} style={active ? { borderBottomColor: 'var(--blue-500)', borderRadius: 0, padding: '0 var(--space-4)', backgroundColor: 'transparent', boxShadow: 'none' } : { borderRadius: 0, padding: '0 var(--space-4)', backgroundColor: 'transparent', boxShadow: 'none' }}>
-            <Icon className={`w-4 h-4 ${isLive ? 'text-red-500 animate-pulse' : ''}`} style={{ marginRight: 'var(--space-2)' }} />
-            {label}
-            {isLive && <span className="animate-ping" style={{ marginLeft: 'var(--space-2)', width: '6px', height: '6px', backgroundColor: 'var(--red-500)', borderRadius: 'var(--radius-full)' }} />}
-        </button>
-    );
-}
-
-function MobileNavButton({ active, onClick, icon: Icon, label, isLive }) {
-    return (
-        <button onClick={onClick} style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', width: '100%', padding: 'var(--space-1) 0', borderRadius: 'var(--radius-xl)', color: active ? 'var(--blue-500)' : 'var(--text-muted-dark)' }}>
-            <div style={{ position: 'relative' }}>
-                <Icon className={`w-5 h-5 ${isLive ? 'text-red-500 animate-pulse' : ''}`} style={{ marginBottom: '2px' }} />
-                {isLive && <span style={{ position: 'absolute', top: '-2px', right: '-2px', width: '8px', height: '8px', backgroundColor: 'var(--red-500)', border: '2px solid var(--slate-950)', borderRadius: 'var(--radius-full)' }} />}
-            </div>
-            <span style={{ fontSize: '10px', fontWeight: 'bold' }}>{label}</span>
-        </button>
-    );
-}
-
-function LiveAuctionView({ liveState, playerMap, teamMap }) {
-    const currentPlayer = liveState?.currentPlayerId ? playerMap.get(liveState.currentPlayerId) : null;
-    const leadingTeam = liveState?.leadingTeamId ? teamMap.get(liveState.leadingTeamId) : null;
-
-    if (liveState?.status === 'PAUSED') {
-        return (
-            <div className="live-auction-card">
-                <Pause className="pause-overlay-icon" style={{ opacity: 0.5 }} />
-                <h2 style={{ fontSize: 'var(--text-2xl)', fontWeight: 'bold', color: '#ffffff' }}>Paused</h2>
-            </div>
-        );
-    }
-
-    if ((liveState?.status === 'SOLD' || liveState?.status === 'UNSOLD') && currentPlayer) {
-        const isSold = liveState.status === 'SOLD';
-        return (
-            <div className="live-auction-card animate-zoom-in" style={{ minHeight: '60vh', padding: 'var(--space-8)' }}>
-                <div className="viewer-live-sold-passed-glow" style={{ background: isSold ? 'linear-gradient(to bottom, var(--green-600), var(--slate-950))' : 'linear-gradient(to bottom, var(--red-600), var(--slate-950))' }}></div>
-                <div className="viewer-live-sold-passed-box">
-                    <h2 className="viewer-live-sold-passed-name">{currentPlayer.name}</h2>
-                    <div className="viewer-live-sold-passed-meta">
-                        {ROLE_ICONS[currentPlayer.role] || ROLE_ICONS['default']}
-                        {currentPlayer.role}
-                    </div>
-
-                    <div className="viewer-live-sold-passed-stamp" style={{ color: isSold ? 'var(--green-500)' : 'var(--red-500)', textShadow: isSold ? '0 0 25px rgba(34, 197, 94, 0.5)' : 'none' }}>
-                        {isSold ? 'SOLD' : 'UNSOLD'}
-                    </div>
-
-                    {isSold && (
-                        <div className="viewer-live-sold-buyer-box">
-                            <div className="viewer-live-sold-buyer-label">Acquired By</div>
-                            <div className="viewer-live-sold-buyer-name" style={{ color: leadingTeam?.color }}>{leadingTeam?.name}</div>
-                            <div className="viewer-live-sold-buyer-price">₹{liveState.currentBid}L</div>
-                        </div>
-                    )}
-                </div>
-            </div>
-        );
-    }
-
-    if (liveState?.status === 'ACTIVE' && currentPlayer) {
-        return (
-            <div className="viewer-live-layout">
-                {/* 1. Sticky Active Card */}
-                <div className="viewer-live-sticky-card">
-                    {leadingTeam && (
-                        <div className="viewer-live-right-glow-bg"
-                            style={{ background: `radial-gradient(ellipse at top right, ${leadingTeam.color}22, transparent 70%)` }} />
-                    )}
-
-                    {/* Top: Player Info */}
-                    <div className="viewer-live-unified-top">
-                        <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 'var(--sp-4)' }}>
-                            <div style={{ flex: 1 }}>
-                                <span className="viewer-live-category-badge">{currentPlayer.category}</span>
-                                <h1 className="viewer-live-player-title" style={{ fontSize: 'var(--text-title)', marginBottom: 'var(--sp-1)' }}>{currentPlayer.name}</h1>
-                                <div className="viewer-live-role-subtitle" style={{ fontSize: 'var(--text-secondary)' }}>
-                                    {ROLE_ICONS[currentPlayer.role]} {currentPlayer.role}
-                                </div>
-                            </div>
-                            <div style={{ textAlign: 'right', flexShrink: 0 }}>
-                                <div style={{ fontSize: 'var(--text-micro)', fontWeight: 'bold', color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.06em' }}>Base</div>
-                                <div style={{ fontSize: 'var(--text-card)', fontWeight: 900, fontFamily: 'var(--font-mono)', color: 'var(--text-secondary)' }}>₹{currentPlayer.basePrice}L</div>
-                            </div>
-                        </div>
-                    </div>
-
-                    {/* Divider — bleeds to card edge using card's own padding value */}
-                    <div className="viewer-live-divider" />
-
-                    {/* Middle: Live Bid */}
-                    <div className="viewer-live-unified-mid">
-                        <div className="viewer-live-indicator-row" style={{ marginBottom: 'var(--sp-3)' }}>
-                            <span className="viewer-live-indicator-glow"><span className="viewer-live-indicator-ping" /><span className="viewer-live-indicator-dot" /></span>
-                            <span className="viewer-live-bids-label">Live Bidding</span>
-                        </div>
-                        <div role="status" aria-live="polite" className="viewer-live-current-bid-row" style={{ marginBottom: 'var(--sp-4)' }}>
-                            <span className="viewer-live-current-bid-curr">₹</span>{liveState.currentBid}<span className="viewer-live-current-bid-unit">L</span>
-                        </div>
-
-                        {/* Leader */}
-                        {leadingTeam ? (
-                            <div className="viewer-live-leader-card">
-                                <div className="viewer-live-leader-card-left">
-                                    <div className="viewer-live-leader-avatar" style={{ backgroundColor: leadingTeam.color }}>{leadingTeam.name.charAt(0)}</div>
-                                    <div>
-                                        <div className="viewer-live-leader-label">Current Leader</div>
-                                        <div className="viewer-live-leader-name">{leadingTeam.name}</div>
-                                    </div>
-                                </div>
-                                <TrendingUp className="text-green-500 w-5 h-5" />
-                            </div>
-                        ) : (
-                            <div style={{ padding: 'var(--sp-2)', textAlign: 'center', color: 'var(--text-muted)', fontSize: 'var(--text-secondary)', fontWeight: 'bold', textTransform: 'uppercase', letterSpacing: '0.08em' }}>Waiting for bids…</div>
-                        )}
-                    </div>
-                </div>
-
-                {/* 2. History Section: scrolls in page flow below the sticky card */}
-                <div className="viewer-live-history-section animate-fade-in">
-                    <div style={{ fontSize: 'var(--text-micro)', fontWeight: 'bold', color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: 'var(--sp-3)' }}>
-                        Bid History
-                    </div>
-                    <div className="viewer-live-history-list-natural">
-                        {liveState?.bidHistory && liveState.bidHistory.length > 0 ? (
-                            [...liveState.bidHistory].reverse().map((hist, idx, arr) => {
-                                const biddingTeam = teamMap.get(hist.leader);
-                                const isLast = idx === arr.length - 1;
-                                return (
-                                    <div key={idx} style={{
-                                        display: 'flex', justifyContent: 'space-between', alignItems: 'center',
-                                        padding: 'var(--sp-3) 0',
-                                        borderBottom: isLast ? 'none' : '1px solid var(--border)',
-                                    }}>
-                                        <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--sp-2)' }}>
-                                            {biddingTeam ? (
-                                                <>
-                                                    <div style={{ width: '1.4rem', height: '1.4rem', borderRadius: '50%', backgroundColor: biddingTeam.color, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '9px', fontWeight: 'bold', color: '#fff', flexShrink: 0 }}>
-                                                        {biddingTeam.name.charAt(0)}
-                                                    </div>
-                                                    <span style={{ fontSize: 'var(--text-secondary)', fontWeight: 'var(--weight-semibold)', color: 'var(--text-primary)' }}>{biddingTeam.name}</span>
-                                                </>
-                                            ) : (
-                                                <span style={{ fontSize: 'var(--text-secondary)', color: 'var(--text-muted)' }}>Base Price</span>
-                                            )}
-                                        </div>
-                                        <span style={{ fontSize: 'var(--text-secondary)', fontWeight: 'bold', color: idx === 0 ? 'var(--success)' : 'var(--text-muted)', fontFamily: 'var(--font-mono)' }}>₹{hist.bid ?? currentPlayer?.basePrice ?? 20}L</span>
-                                    </div>
-                                );
-                            })
-                        ) : (
-                            <div style={{ fontSize: 'var(--text-secondary)', color: 'var(--text-muted)', fontStyle: 'italic', textAlign: 'center', padding: 'var(--sp-4) 0' }}>No previous bids in this round</div>
-                        )}
-                    </div>
-                </div>
-            </div>
-        );
-    }
-
-
-    return (
-        <div className="live-idle-wrapper">
-            <div className="live-idle-icon">
-                <Mic2 className="w-10 h-10" style={{ color: 'var(--accent)' }} />
-            </div>
-            <h2 style={{ fontSize: 'var(--text-card)', fontWeight: 'var(--weight-black)', color: 'var(--text-primary)' }}>Waiting for Auctioneer</h2>
-            <p style={{ fontSize: 'var(--text-secondary)', color: 'var(--text-muted)', textAlign: 'center', maxWidth: '320px', lineHeight: 1.4, margin: '0 auto' }}>
-                The bidding screen will open automatically when the auctioneer activates the next player.
-            </p>
-        </div>
-    );
-}
-
-function TournamentResultsView({ safeTeams, safePlayers, squadMap, teamMap, spenderTeam, spenderSpent, mostExpensivePlayer, buyerTeam, largestSquadTeam, largestSquadCount, topPurchases, soldCount, unsoldCount, totalSpent }) {
-    return (
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--sp-6)', width: '100%', paddingBottom: 'var(--sp-8)' }} className="animate-fade-in">
-            {/* HERO BANNER */}
-            <div className="card" style={{
-                position: 'relative',
-                overflow: 'hidden',
-                padding: 'var(--sp-8) var(--sp-6)',
-                textAlign: 'center',
-                background: 'linear-gradient(135deg, #131827, #0b0e17)', /* premium dark background */
-                border: '1px solid var(--border-strong)',
-                borderRadius: 'var(--radius-2xl)',
-                boxShadow: '0 20px 40px -15px rgba(0,0,0,0.5), inset 0 1px 0 rgba(255,255,255,0.05)'
-            }}>
-                <div style={{
-                    position: 'absolute',
-                    top: '50%',
-                    left: '50%',
-                    transform: 'translate(-50%, -50%)',
-                    width: '300px',
-                    height: '300px',
-                    background: 'radial-gradient(circle, rgba(234,179,8,0.08) 0%, transparent 75%)',
-                    pointerEvents: 'none'
-                }}></div>
-                <div style={{ 
-                    display: 'inline-flex', 
-                    alignItems: 'center', 
-                    justifyContent: 'center', 
-                    width: '4rem', 
-                    height: '4rem', 
-                    borderRadius: 'var(--radius-xl)', 
-                    backgroundColor: 'rgba(234,179,8,0.05)', 
-                    border: '1px solid rgba(234,179,8,0.2)', 
-                    marginBottom: 'var(--sp-4)', 
-                    color: 'var(--warning)',
-                    filter: 'drop-shadow(0 0 15px rgba(234,179,8,0.2))'
-                }}>
-                    <Trophy className="w-7 h-7" />
-                </div>
-                <h1 style={{ fontSize: 'var(--text-3xl)', fontWeight: '900', color: '#ffffff', margin: 0, textShadow: '0 2px 10px rgba(0,0,0,0.5)' }}>Tournament Completed</h1>
-                <p style={{ color: 'var(--text-muted)', fontSize: 'var(--text-secondary)', marginTop: '6px', fontWeight: '500' }}>
-                    The auction has Concluded. All franchises have finalized their squads.
-                </p>
-            </div>
-
-            {/* HIGHLIGHTS GRID */}
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))', gap: 'var(--sp-4)' }}>
-                {/* Highlight 1: Highest Spender */}
-                {spenderTeam && (
-                    <div className="card" style={{ 
-                        padding: 'var(--sp-6)', 
-                        position: 'relative', 
-                        overflow: 'hidden', 
-                        background: 'var(--bg-surface-dark)',
-                        border: `1px solid ${spenderTeam.color}25`, 
-                        boxShadow: `0 4px 20px ${spenderTeam.color}04` 
-                    }}>
-                        <div style={{ fontSize: '10px', fontWeight: 'bold', color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Highest Spender</div>
-                        <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--sp-3)', marginTop: 'var(--sp-2)' }}>
-                            <div style={{ 
-                                width: '38px', 
-                                height: '38px', 
-                                borderRadius: '10px', 
-                                backgroundColor: `${spenderTeam.color}08`, 
-                                border: `1px solid ${spenderTeam.color}40`, 
-                                display: 'flex', 
-                                alignItems: 'center', 
-                                justifyContent: 'center', 
-                                fontWeight: '800', 
-                                color: spenderTeam.color,
-                                fontSize: '12px'
-                            }}>
-                                {spenderTeam.logoText || spenderTeam.name.split(' ').map(n => n[0]).join('').slice(0, 3).toUpperCase()}
-                            </div>
-                            <div>
-                                <div style={{ fontWeight: 'bold', fontSize: 'var(--text-secondary)' }}>{spenderTeam.name}</div>
-                                <div style={{ fontSize: 'var(--text-secondary)', fontWeight: '800', color: 'var(--text-primary)', marginTop: '2px' }}>₹{spenderSpent}L Spent</div>
-                            </div>
-                        </div>
-                    </div>
-                )}
-
-                {/* Highlight 2: Most Expensive Player */}
-                {mostExpensivePlayer && (
-                    <div className="card" style={{ padding: 'var(--sp-6)', position: 'relative', overflow: 'hidden', background: 'var(--bg-surface-dark)', border: '1px solid var(--border-strong)' }}>
-                        <div style={{ fontSize: '10px', fontWeight: 'bold', color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Most Expensive Player</div>
-                        <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--sp-3)', marginTop: 'var(--sp-2)' }}>
-                            <div style={{ 
-                                width: '38px', 
-                                height: '38px', 
-                                borderRadius: '10px', 
-                                backgroundColor: 'rgba(234,179,8,0.04)', 
-                                border: '1px solid rgba(234,179,8,0.2)', 
-                                display: 'flex', 
-                                alignItems: 'center', 
-                                justifyContent: 'center', 
-                                color: 'var(--warning)',
-                                filter: 'drop-shadow(0 0 10px rgba(234,179,8,0.1))'
-                            }}>
-                                <Trophy className="w-4 h-4" />
-                            </div>
-                            <div>
-                                <div style={{ fontWeight: 'bold', fontSize: 'var(--text-secondary)' }}>{mostExpensivePlayer.name}</div>
-                                <div style={{ fontSize: '11px', color: 'var(--text-muted)', marginTop: '4px', display: 'flex', alignItems: 'center', gap: 'var(--sp-1.5)', flexWrap: 'wrap' }}>
-                                    <span>Sold to</span>
-                                    <span style={{
-                                        backgroundColor: buyerTeam?.color ? `${buyerTeam.color}18` : 'var(--bg-elevated)',
-                                        color: buyerTeam?.color || 'var(--text-muted)',
-                                        border: `1px solid ${buyerTeam?.color ? buyerTeam.color + '40' : 'var(--border)'}`,
-                                        padding: '2px 8px',
-                                        borderRadius: 'var(--radius-full)',
-                                        fontSize: '9px',
-                                        fontWeight: 'bold',
-                                        textTransform: 'uppercase',
-                                        letterSpacing: '0.04em',
-                                        display: 'inline-block',
-                                    }}>
-                                        {buyerTeam?.name}
-                                    </span>
-                                    <span>for</span>
-                                    <span style={{ fontWeight: '800', color: 'var(--warning)', fontSize: '12px', fontFamily: 'var(--font-mono)' }}>₹{mostExpensivePlayer.soldPrice}L</span>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                )}
-
-                {/* Highlight 3: Largest Squad */}
-                {largestSquadTeam && (
-                    <div className="card" style={{ 
-                        padding: 'var(--sp-6)', 
-                        position: 'relative', 
-                        overflow: 'hidden', 
-                        background: 'var(--bg-surface-dark)',
-                        border: `1px solid ${largestSquadTeam.color}25`, 
-                        boxShadow: `0 4px 20px ${largestSquadTeam.color}04` 
-                    }}>
-                        <div style={{ fontSize: '10px', fontWeight: 'bold', color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Largest Squad</div>
-                        <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--sp-3)', marginTop: 'var(--sp-2)' }}>
-                            <div style={{ 
-                                width: '38px', 
-                                height: '38px', 
-                                borderRadius: '10px', 
-                                backgroundColor: `${largestSquadTeam.color}08`, 
-                                border: `1px solid ${largestSquadTeam.color}40`, 
-                                display: 'flex', 
-                                alignItems: 'center', 
-                                justifyContent: 'center', 
-                                fontWeight: '800', 
-                                color: largestSquadTeam.color,
-                                fontSize: '12px'
-                            }}>
-                                {largestSquadTeam.logoText || largestSquadTeam.name.split(' ').map(n => n[0]).join('').slice(0, 3).toUpperCase()}
-                            </div>
-                            <div>
-                                <div style={{ fontWeight: 'bold', fontSize: 'var(--text-secondary)' }}>{largestSquadTeam.name}</div>
-                                <div style={{ fontSize: 'var(--text-secondary)', fontWeight: '800', color: 'var(--text-primary)', marginTop: '2px' }}>{largestSquadCount} Players</div>
-                            </div>
-                        </div>
-                    </div>
-                )}
-            </div>
-
-            {/* LOWER PORTION: STATISTICS + TOP PURCHASES */}
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(320px, 1fr))', gap: 'var(--sp-6)' }}>
-                {/* Stats Summary */}
-                <div className="card" style={{ padding: 'var(--sp-6)', display: 'flex', flexDirection: 'column', gap: 'var(--sp-4)', background: 'var(--bg-surface-dark)', border: '1px solid var(--border-strong)' }}>
-                    <h3 style={{ fontSize: 'var(--text-sub)', fontWeight: 'bold', margin: 0 }}>Auction Summary</h3>
-                    <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--sp-3)', marginTop: 'var(--sp-2)' }}>
-                        <div style={{ display: 'flex', justifyContent: 'space-between', borderBottom: '1px solid var(--border)', paddingBottom: 'var(--sp-2)' }}>
-                            <span style={{ fontSize: 'var(--text-secondary)', color: 'var(--text-muted)' }}>Total Money Spent</span>
-                            <span className="font-mono" style={{ fontWeight: 'bold', color: 'var(--warning)' }}>₹{totalSpent}L</span>
-                        </div>
-                        <div style={{ display: 'flex', justifyContent: 'space-between', borderBottom: '1px solid var(--border)', paddingBottom: 'var(--sp-2)' }}>
-                            <span style={{ fontSize: 'var(--text-secondary)', color: 'var(--text-muted)' }}>Sold Players Count</span>
-                            <span className="font-mono" style={{ fontWeight: 'bold', color: 'var(--text-primary)' }}>{soldCount} Sold</span>
-                        </div>
-                        <div style={{ display: 'flex', justifyContent: 'space-between', borderBottom: '1px solid var(--border)', paddingBottom: 'var(--sp-2)' }}>
-                            <span style={{ fontSize: 'var(--text-secondary)', color: 'var(--text-muted)' }}>Unsold Players Count</span>
-                            <span className="font-mono" style={{ fontWeight: 'bold', color: 'var(--text-muted)' }}>{unsoldCount} Unsold</span>
-                        </div>
-                        <div style={{ display: 'flex', justifyContent: 'space-between', paddingBottom: 'var(--sp-1)' }}>
-                            <span style={{ fontSize: 'var(--text-secondary)', color: 'var(--text-muted)' }}>Average Player Value</span>
-                            <span className="font-mono" style={{ fontWeight: 'bold', color: 'var(--accent-light)' }}>₹{soldCount > 0 ? (totalSpent / soldCount).toFixed(1) : 0}L</span>
-                        </div>
-                    </div>
-                </div>
-
-                {/* Top 5 Purchases */}
-                <div className="card" style={{ padding: 'var(--sp-6)', display: 'flex', flexDirection: 'column', gap: 'var(--sp-4)', background: 'var(--bg-surface-dark)', border: '1px solid var(--border-strong)' }}>
-                    <h3 style={{ fontSize: 'var(--text-sub)', fontWeight: 'bold', margin: 0 }}>Top Purchases</h3>
-                    <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--sp-2.5)' }}>
-                        {topPurchases.map((p, index) => {
-                            const team = teamMap.get(p.soldTo);
-                            return (
-                                <div key={p._id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderBottom: index < topPurchases.length - 1 ? '1px solid var(--border)' : 'none', paddingBottom: 'var(--sp-2)' }}>
-                                    <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--sp-3)' }}>
-                                        <div style={{ 
-                                            width: '24px', 
-                                            height: '24px', 
-                                            borderRadius: '6px', 
-                                            backgroundColor: 'rgba(255, 255, 255, 0.03)', 
-                                            border: '1px solid var(--border)',
-                                            display: 'flex', 
-                                            alignItems: 'center', 
-                                            justifyContent: 'center', 
-                                            fontWeight: 'bold', 
-                                            fontSize: '10px', 
-                                            color: 'var(--text-muted)' 
-                                        }}>
-                                            #{index + 1}
-                                        </div>
-                                        <div>
-                                            <span style={{ fontWeight: 'bold', fontSize: 'var(--text-secondary)' }}>{p.name}</span>
-                                            <div style={{ fontSize: '10px', color: 'var(--text-muted)', marginTop: '4px', display: 'flex', alignItems: 'center', gap: 'var(--sp-1.5)' }}>
-                                                <span>Sold to</span>
-                                                <span style={{
-                                                    backgroundColor: team?.color ? `${team.color}18` : 'var(--bg-elevated)',
-                                                    color: team?.color || 'var(--text-muted)',
-                                                    border: `1px solid ${team?.color ? team.color + '40' : 'var(--border)'}`,
-                                                    padding: '2px 7px',
-                                                    borderRadius: 'var(--radius-full)',
-                                                    fontSize: '9px',
-                                                    fontWeight: 'bold',
-                                                    textTransform: 'uppercase',
-                                                    letterSpacing: '0.04em',
-                                                    display: 'inline-block',
-                                                }}>
-                                                    {team?.name}
-                                                </span>
-                                            </div>
-                                        </div>
-                                    </div>
-                                    <span className="font-mono" style={{ fontWeight: '700', color: 'var(--text-primary)', fontSize: 'var(--text-secondary)' }}>₹{p.soldPrice}L</span>
-                                </div>
-                            );
-                        })}
-                        {topPurchases.length === 0 && (
-                            <div className="empty-table-state" style={{ padding: 'var(--sp-4)' }}>No players sold yet.</div>
-                        )}
-                    </div>
-                </div>
-            </div>
         </div>
     );
 }

@@ -4,9 +4,3 @@
 @import './styles/components.css';
 @import './styles/utilities.css';
 @import './styles/responsive.css';
-
-@import './pages/Landing/LandingPage.css';
-@import './pages/Login/Login.css';
-@import './pages/SuperAdmin/SuperAdmin.css';
-@import './pages/Admin/Admin.css';
-@import './pages/Viewer/ViewerScreen.css';

@@ -2,10 +2,10 @@ const mongoose = require('mongoose');
 
 const PlayerSchema = new mongoose.Schema({
     auctionId: { type: mongoose.Schema.Types.ObjectId, ref: 'Auction', required: true },
-    name: String,
-    role: String,
-    category: String,
-    basePrice: Number,
+    name: { type: String, required: true },
+    role: { type: String, required: true },
+    category: { type: String, required: true },
+    basePrice: { type: Number, required: true, min: [0, 'Base price cannot be negative'] },
     order: Number,
     isSold: { type: Boolean, default: false },
     isUnsold: { type: Boolean, default: false },

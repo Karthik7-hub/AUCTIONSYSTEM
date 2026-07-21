@@ -1,23 +1,15 @@
-/* Viewer / Spectator Screen Stylesheet */
+/* ViewerScreen Scoped Styles using BEM standard */
 
-/* ——————————————————————————
-   PAGE WRAPPER
-   —————————————————————————— */
-
-.viewer-screen {
-  height: 100dvh;       /* fixed height so children can flex-grow and overflow-y:auto works */
+.viewer {
+  height: 100dvh;
   background-color: var(--bg-base);
   color: var(--text-primary);
   display: flex;
   flex-direction: column;
-  overflow: hidden;     /* prevent the outer page from scrolling; content scrolls inside viewer-main-content */
+  overflow: hidden;
 }
 
-/* ——————————————————————————
-   DESKTOP HEADER NAV
-   —————————————————————————— */
-
-.viewer-header {
+.viewer__header {
   background-color: var(--bg-surface);
   border-bottom: 1px solid var(--border);
   position: sticky;
@@ -26,7 +18,7 @@
   flex-shrink: 0;
 }
 
-.viewer-header-content {
+.viewer__header-content {
   max-width: 80rem;
   margin: 0 auto;
   padding: 0 var(--sp-6);
@@ -36,1328 +28,173 @@
   justify-content: space-between;
 }
 
-.viewer-desktop-nav {
+.viewer__desktop-nav {
   display: flex;
   align-items: center;
   gap: var(--sp-1);
 }
 
-/* Desktop nav buttons */
-.viewer-nav-btn {
+.viewer__nav-btn {
   display: flex;
   align-items: center;
   gap: var(--sp-2);
-  padding: 0 var(--sp-4);
+  padding: 0 var(--sp-4) !important;
   height: 36px;
-  border-radius: var(--radius-md);
+  border-radius: var(--radius-md) !important;
   font-weight: var(--weight-semibold);
   font-size: var(--text-secondary);
   color: var(--text-muted);
   transition: var(--transition-fast);
   cursor: pointer;
   white-space: nowrap;
+  background: transparent;
+  border: none;
+  box-shadow: none !important;
 }
 
-.viewer-nav-btn:hover {
-  background-color: var(--bg-hover);
+.viewer__nav-btn:hover {
+  background-color: var(--bg-hover) !important;
   color: var(--text-primary);
 }
 
-.viewer-nav-btn-active {
-  background-color: var(--accent-muted);
-  color: var(--accent-light);
+.viewer__nav-btn--active {
+  background-color: var(--accent-muted) !important;
+  color: var(--accent-light) !important;
 }
 
-/* Live indicator dot inside nav button */
-.viewer-nav-live-dot {
+.viewer__live-dot {
   width: 7px;
   height: 7px;
   border-radius: var(--radius-full);
   background-color: var(--success);
-  animation: badge-pulse 1.5s ease infinite;
+  animation: viewerLivePulse 1.5s ease infinite;
   flex-shrink: 0;
 }
 
-/* ——————————————————————————
-   MAIN CONTENT
-   —————————————————————————— */
+@keyframes viewerLivePulse {
+  0%, 100% { box-shadow: 0 0 0 0 rgba(34,197,94,0.5); }
+  50%       { box-shadow: 0 0 0 4px rgba(34,197,94,0); }
+}
 
-.viewer-main-content {
+.viewer__main {
   flex: 1;
   overflow-y: auto;
-  padding-bottom: 80px; /* space for mobile bottom nav */
+  padding-bottom: 0;
 }
 
-/* ——— MOBILE LIVE TAB: Split-panel layout ———
-   Card is fixed at the top, history scrolls below.
-   No position:sticky fighting — the card simply lives
-   at the top of a flex column, history gets the rest. */
-@media (max-width: 767px) {
-  .viewer-main-content.live-tab-active {
-    overflow: hidden;        /* stop outer scroll */
-    padding-bottom: 0;       /* padding moves to history section */
-    display: flex;
-    flex-direction: column;
-  }
-
-  .viewer-main-content.live-tab-active .viewer-main-content-container {
-    flex: 1;
-    min-height: 0;           /* allow flex child to shrink below content size */
-    display: flex;
-    flex-direction: column;
-    padding-top: 0;
-    padding-bottom: 0;
-  }
-
-  /* The live layout fills the remaining height */
-  .viewer-main-content.live-tab-active .viewer-live-layout {
-    flex: 1;
-    min-height: 0;
-    display: flex;
-    flex-direction: column;
-    overflow: hidden;
-    gap: 0;
-  }
-
-  /* Card: just sits at the top, no sticky needed */
-  .viewer-main-content.live-tab-active .viewer-live-sticky-card {
-    position: relative;
-    top: unset;
-    flex-shrink: 0;
-  }
-
-  /* History: the actual scroll area, fills remaining height */
-  .viewer-main-content.live-tab-active .viewer-live-history-section {
-    flex: 1;
-    overflow-y: auto;
-    padding-bottom: 80px;    /* space for mobile bottom nav */
-    -webkit-overflow-scrolling: touch;
-  }
-}
-
-.viewer-main-content-container {
+.viewer__container {
   padding-top: var(--sp-6);
   padding-bottom: var(--sp-6);
 }
 
-
-/* ——————————————————————————
-   LIVE AUCTION VIEW
-   —————————————————————————— */
-
-.live-auction-view {
-  display: flex;
-  flex-direction: column;
-  gap: var(--sp-6);
-}
-
-/* IDLE STATE */
-.live-idle-wrapper {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  min-height: 60vh;
-  gap: var(--sp-4);
-  color: var(--text-muted);
-}
-
-.live-idle-icon {
-  width: 80px;
-  height: 80px;
-  background-color: var(--bg-card);
-  border: 1px solid var(--border);
-  border-radius: var(--radius-full);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  margin-bottom: var(--sp-2);
-}
-
-/* PAUSED STATE banner */
-.live-paused-banner {
-  background-color: var(--warning-muted);
-  border: 1px solid var(--warning-border);
-  border-radius: var(--radius-xl);
-  padding: var(--sp-4) var(--sp-6);
-  display: flex;
-  align-items: center;
-  gap: var(--sp-3);
-  color: var(--warning);
-  font-weight: var(--weight-semibold);
-  font-size: var(--text-secondary);
-}
-
-/* Active bid card */
-.live-bid-card {
-  background-color: var(--bg-card);
-  border: 1px solid var(--border);
-  border-radius: var(--radius-2xl);
-  overflow: hidden;
-  position: relative;
-}
-
-.live-bid-card-glow {
-  position: absolute;
-  inset: 0;
-  background: radial-gradient(circle at top left, rgba(79,124,255,0.06), transparent 60%);
-  pointer-events: none;
-}
-
-.live-bid-player-section {
-  padding: var(--sp-6);
-  display: flex;
-  align-items: center;
-  gap: var(--sp-6);
-  border-bottom: 1px solid var(--border);
-}
-
-.live-bid-player-avatar {
-  width: 64px;
-  height: 64px;
-  border-radius: var(--radius-xl);
-  background: linear-gradient(135deg, var(--accent), var(--accent-light));
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  font-size: var(--text-card);
-  font-weight: var(--weight-black);
-  color: #fff;
-  flex-shrink: 0;
-}
-
-.live-bid-player-name {
-  font-size: var(--text-card);
-  font-weight: var(--weight-black);
-  color: var(--text-primary);
-  line-height: 1.2;
-}
-
-.live-bid-player-meta {
-  font-size: var(--text-secondary);
-  color: var(--text-muted);
-  margin-top: var(--sp-1);
-}
-
-/* Current bid display */
-.live-bid-amount-section {
-  padding: var(--sp-6);
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: var(--sp-4);
-  flex-wrap: wrap;
-}
-
-.live-bid-amount-label {
-  font-size: var(--text-caption);
-  font-weight: var(--weight-semibold);
-  color: var(--text-muted);
-  text-transform: uppercase;
-  letter-spacing: 0.06em;
-}
-
-.live-bid-amount-value {
-  font-size: var(--text-title);
-  font-weight: var(--weight-black);
-  color: var(--success);
-  font-family: var(--font-mono);
-  line-height: 1;
-}
-
-.live-bid-leader-block {
-  display: flex;
-  flex-direction: column;
-  align-items: flex-end;
-  gap: var(--sp-1);
-}
-
-.live-bid-leader-label {
-  font-size: var(--text-caption);
-  color: var(--text-muted);
-  text-transform: uppercase;
-  letter-spacing: 0.06em;
-  font-weight: var(--weight-semibold);
-}
-
-.live-bid-leader-name {
-  font-size: var(--text-sub);
-  font-weight: var(--weight-bold);
-  color: var(--text-primary);
-}
-
-/* SOLD state */
-.live-sold-overlay {
-  background: linear-gradient(135deg, rgba(34,197,94,0.08), transparent);
-  border-color: var(--success-border) !important;
-}
-
-.live-sold-badge {
-  display: inline-flex;
-  align-items: center;
-  gap: var(--sp-2);
-  background-color: var(--success-muted);
-  color: var(--success);
-  border: 1px solid var(--success-border);
-  border-radius: var(--radius-full);
-  padding: var(--sp-1) var(--sp-4);
-  font-weight: var(--weight-bold);
-  font-size: var(--text-secondary);
-  letter-spacing: 0.04em;
-}
-
-/* Stats row below live bid card */
-.live-stats-row {
-  display: grid;
-  grid-template-columns: repeat(2, 1fr);
-  gap: var(--sp-4);
-}
-
-@media (min-width: 768px) {
-  .live-stats-row { grid-template-columns: repeat(4, 1fr); }
-}
-
-/* ——————————————————————————
-   TEAMS TAB
-   —————————————————————————— */
-
-.viewer-team-item {
-  cursor: pointer;
-  overflow: hidden;
-  transition: transform 0.15s var(--ease-out), border-color 0.15s ease, box-shadow 0.15s ease;
-}
-
-.viewer-team-item:hover {
-  transform: translateY(-2px);
-  border-color: var(--border-strong);
-  box-shadow: var(--shadow-md);
-}
-
-.viewer-team-card-header {
-  padding: var(--sp-6);
-  position: relative;
-  overflow: hidden;
-  min-height: 100px;
-  display: flex;
-  flex-direction: column;
-  justify-content: flex-end;
-}
-
-.viewer-team-card-title {
-  font-size: var(--text-sub);
-  font-weight: var(--weight-black);
-  color: #ffffff;
-  text-shadow: 0 1px 4px rgba(0,0,0,0.3);
-  position: relative;
-  z-index: 2;
-}
-
-.viewer-team-card-subtitle {
-  display: flex;
-  align-items: center;
-  gap: var(--sp-1);
-  color: rgba(255,255,255,0.7);
-  font-size: var(--text-secondary);
-  font-weight: var(--weight-medium);
-  position: relative;
-  z-index: 2;
-  margin-top: var(--sp-1);
-}
-
-.viewer-team-card-trophy-glow {
-  position: absolute;
-  top: var(--sp-4);
-  right: var(--sp-4);
-  width: 3rem;
-  height: 3rem;
-  opacity: 0.15;
-  color: #ffffff;
-}
-
-.viewer-team-card-purse-row {
-  display: flex;
-  justify-content: space-between;
-  padding: var(--sp-3) var(--sp-6);
-  border-bottom: 1px solid var(--border);
-  font-size: var(--text-secondary);
-  color: var(--text-secondary);
-}
-
-.viewer-team-card-players-list {
-  flex: 1;
-  overflow-y: auto;
-  padding: var(--sp-2) 0;
-}
-
-.viewer-team-card-players-empty {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  height: 100%;
-  min-height: 120px;
-  color: var(--text-muted);
-  font-size: var(--text-secondary);
-}
-
-.viewer-team-card-player-row {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  padding: var(--sp-3) var(--sp-6);
-  border-bottom: 1px solid var(--border);
-  transition: background-color 0.12s ease;
-}
-
-.viewer-team-card-player-row:last-child { border-bottom: none; }
-.viewer-team-card-player-row:hover { background-color: var(--bg-hover); }
-
-.viewer-team-card-player-info {
-  display: flex;
-  align-items: center;
-  gap: var(--sp-3);
-}
-
-.viewer-team-card-player-name {
-  font-size: var(--text-secondary);
-  font-weight: var(--weight-semibold);
-  color: var(--text-primary);
-}
-
-.viewer-team-card-player-role {
-  font-size: var(--text-caption);
-  color: var(--text-muted);
-  margin-top: 2px;
-}
-
-.viewer-team-card-player-price {
-  font-family: var(--font-mono);
-  font-weight: var(--weight-bold);
-  font-size: var(--text-secondary);
-  color: var(--success);
-}
-
-/* ——————————————————————————
-   PLAYER POOL TAB
-   —————————————————————————— */
-
-.viewer-pool-sticky-header {
-  display: flex;
-  flex-direction: column;
-  gap: var(--sp-3);
-  background-color: var(--bg-base);
-  position: sticky;
-  top: 60px;
-  z-index: 20;
-  padding-bottom: var(--sp-3);
-}
-
-/* Category filter buttons */
-.filter-btn {
-  display: inline-flex;
-  align-items: center;
-  padding: var(--sp-1) var(--sp-3);
-  border-radius: var(--radius-full);
-  font-size: var(--text-caption);
-  font-weight: var(--weight-semibold);
-  border: 1px solid var(--border);
-  background-color: transparent;
-  color: var(--text-muted);
-  cursor: pointer;
-  transition: var(--transition-fast);
-  white-space: nowrap;
-}
-
-.filter-btn:hover {
-  border-color: var(--border-strong);
-  color: var(--text-secondary);
-}
-
-.filter-btn-active {
-  background-color: var(--text-primary) !important;
-  color: var(--bg-base) !important;
-  border-color: var(--text-primary) !important;
-}
-
-/* Player pool card */
-.player-item-card {
-  display: flex;
-  flex-direction: column;
-  gap: var(--sp-3);
-  position: relative;
-  cursor: default;
-  padding: var(--sp-4) !important;
-  transition: transform 0.15s var(--ease-out), border-color 0.15s ease;
-}
-
-.player-item-card:hover {
-  transform: translateY(-1px);
-  border-color: var(--border-strong);
-}
-
-.viewer-pool-check-icon {
-  position: absolute;
-  top: var(--sp-3);
-  right: var(--sp-3);
-  color: var(--success);
-  opacity: 0.7;
-}
-
-.viewer-pool-card-header {
-  display: flex;
-  flex-direction: column;
-  gap: var(--sp-2);
-}
-
-.viewer-pool-card-header-badge {
-  display: inline-flex;
-  align-items: center;
-  gap: var(--sp-1);
-  font-size: var(--text-micro);
-  color: var(--text-muted);
-  font-weight: var(--weight-semibold);
-  text-transform: uppercase;
-  letter-spacing: 0.04em;
-}
-
-.viewer-pool-card-title {
-  font-size: var(--text-secondary);
-  font-weight: var(--weight-bold);
-  color: var(--text-primary);
-  line-height: 1.3;
-}
-
-.viewer-pool-card-footer {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  margin-top: auto;
-  padding-top: var(--sp-3);
-  border-top: 1px solid var(--border);
-}
-
-/* ——————————————————————————
-   LIVE FEED TAB
-   —————————————————————————— */
-
-.viewer-feed-card {
-  background-color: var(--bg-card);
-  border: 1px solid var(--border);
-  border-radius: var(--radius-2xl);
-  overflow: hidden;
-}
-
-.viewer-feed-header {
-  padding: var(--sp-4) var(--sp-6);
-  border-bottom: 1px solid var(--border);
-  font-size: var(--text-secondary);
-  font-weight: var(--weight-bold);
-  color: var(--text-secondary);
-  text-transform: uppercase;
-  letter-spacing: 0.06em;
-}
-
-.viewer-feed-row {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  padding: var(--sp-4) var(--sp-6);
-  border-bottom: 1px solid var(--border);
-  cursor: default;
-}
-
-.viewer-feed-row:last-child { border-bottom: none; }
-
-.viewer-feed-row-inner {
-  display: flex;
-  align-items: center;
-  gap: var(--sp-4);
-}
-
-.viewer-feed-avatar {
-  width: 36px;
-  height: 36px;
-  border-radius: var(--radius-full);
-  background: linear-gradient(135deg, var(--accent), var(--accent-light));
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  font-weight: var(--weight-bold);
-  font-size: var(--text-secondary);
-  color: #fff;
-  flex-shrink: 0;
-}
-
-.viewer-feed-badge-val {
-  font-size: var(--text-micro);
-  font-weight: var(--weight-bold);
-  text-transform: uppercase;
-  letter-spacing: 0.04em;
-  padding: 2px 8px;
-  border-radius: var(--radius-full);
-  color: #fff;
-  text-align: right;
-  max-width: 120px;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
-.viewer-feed-price {
-  font-family: var(--font-mono);
-  font-weight: var(--weight-bold);
-  font-size: var(--text-secondary);
-  color: var(--success);
-  text-align: right;
-  margin-top: 2px;
-}
-
-/* ——————————————————————————
-   TEAM DETAIL MODAL
-   —————————————————————————— */
-
-.viewer-modal-avatar-glow {
-  width: 56px;
-  height: 56px;
-  border-radius: var(--radius-xl);
-  background-color: rgba(255,255,255,0.15);
-  backdrop-filter: blur(4px);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  flex-shrink: 0;
-}
-
-/* Stats grid inside modal */
-.modal-stats-grid {
-  display: grid;
-  grid-template-columns: repeat(3, 1fr);
-  gap: 0;
-  background-color: var(--bg-elevated);
-  border: 1px solid var(--border);
-  border-radius: var(--radius-xl);
-  overflow: hidden;
-  margin-bottom: var(--sp-6);
-}
-
-.modal-stat-col {
-  padding: var(--sp-4);
-  display: flex;
-  flex-direction: column;
-  gap: var(--sp-1);
-  border-right: 1px solid var(--border);
-}
-
-.modal-stat-col:last-child { border-right: none; }
-
-.modal-stat-label {
-  font-size: var(--text-micro);
-  color: var(--text-muted);
-  font-weight: var(--weight-semibold);
-  text-transform: uppercase;
-  letter-spacing: 0.06em;
-  display: flex;
-  align-items: center;
-  gap: var(--sp-1);
-}
-
-.modal-stat-value {
-  font-size: var(--text-card);
-  font-weight: var(--weight-black);
-  color: var(--text-primary);
-  line-height: 1;
-}
-
-.modal-stat-value.mono { font-family: var(--font-mono); }
-
-/* Role composition bars */
-.viewer-modal-bar-counts {
-  display: grid;
-  grid-template-columns: repeat(2, 1fr);
-  gap: var(--sp-4);
-  margin-bottom: var(--sp-6);
-}
-
-@media (min-width: 640px) {
-  .viewer-modal-bar-counts { grid-template-columns: repeat(4, 1fr); }
-}
-
-.viewer-modal-bar-col { display: flex; flex-direction: column; gap: var(--sp-2); }
-
-.viewer-modal-bar-label {
-  display: flex;
-  justify-content: space-between;
-  font-size: var(--text-caption);
-  color: var(--text-muted);
-  font-weight: var(--weight-semibold);
-}
-
-/* ——————————————————————————
-   MOBILE BOTTOM NAV
-   —————————————————————————— */
-
-.viewer-mobile-bottom-nav {
+/* Mobile Nav - Hidden by default on Desktop */
+.viewer__mobile-nav {
+  display: none;
   position: fixed;
-  bottom: 0; left: 0; right: 0;
-  background-color: var(--bg-surface);
-  border-top: 1px solid var(--border);
-  display: flex;
-  z-index: 50;
-  safe-area-inset-bottom: env(safe-area-inset-bottom);
-}
-
-@media (min-width: 768px) {
-  .viewer-mobile-bottom-nav { display: none !important; }
-}
-
-.viewer-mobile-nav-btn {
-  flex: 1;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  padding: var(--sp-3) var(--sp-1);
-  gap: 3px;
-  color: var(--text-muted);
-  font-size: var(--text-micro);
-  font-weight: var(--weight-semibold);
-  transition: var(--transition-fast);
-  cursor: pointer;
-  border-right: 1px solid var(--border);
-}
-
-.viewer-mobile-nav-btn:last-child { border-right: none; }
-
-.viewer-mobile-nav-btn:hover { color: var(--text-secondary); }
-
-.viewer-mobile-nav-btn-active { color: var(--accent); }
-
-/* ——— Empty State Card Layout ——— */
-.landing-empty-container {
-  grid-column: 1 / -1;
-  border: 2px dashed var(--border);
-  border-radius: var(--radius-2xl);
-  padding: var(--sp-12) var(--sp-6);
-  text-align: center;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  background-color: var(--bg-surface);
-}
-
-.landing-empty-icon-bg {
-  width: 64px;
+  bottom: 0;
+  left: 0;
+  right: 0;
   height: 64px;
-  border-radius: var(--radius-full);
-  background-color: var(--bg-elevated);
-  border: 1px solid var(--border);
-  display: flex;
+  background-color: var(--bg-card);
+  border-top: 1px solid var(--border);
+  justify-content: space-around;
   align-items: center;
-  justify-content: center;
-  margin-bottom: var(--sp-4);
-  color: var(--text-muted);
+  padding: 0 var(--sp-4);
+  z-index: 40;
+  box-shadow: 0 -4px 12px rgba(0, 0, 0, 0.15);
 }
 
-.landing-empty-title {
-  font-size: var(--text-sub);
-  font-weight: var(--weight-bold);
-  color: var(--text-primary);
-}
-
-.landing-empty-subtitle {
-  color: var(--text-muted);
-  margin-top: var(--sp-2);
-  font-size: var(--text-secondary);
-}
-
-/* ——— Mobile Media Queries ——— */
-@media (max-width: 767px) {
-  .viewer-main-content-container {
-    padding-top: var(--sp-2) !important;
-  }
-  .viewer-pool-sticky-header {
-    top: 0 !important;
-  }
-}
-
-/* ——————————————————————————
-   LOGIN PROMPT (JOIN PANEL)
-   —————————————————————————— */
-
-.viewer-login-prompt {
-  min-height: 100vh;
-  background-color: var(--bg-base);
+.viewer__mobile-nav-btn {
   display: flex;
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  padding: var(--sp-4);
-}
-
-.viewer-join-card {
   width: 100%;
-  max-width: 28rem;
-  background-color: var(--bg-surface);
-  border: 1px solid var(--border-strong);
-  border-radius: var(--radius-3xl);
-  padding: var(--sp-8);
-  box-shadow: var(--shadow-2xl);
-  animation: scale-in 0.25s var(--ease-out) forwards;
+  padding: var(--sp-1) 0;
+  border-radius: var(--radius-xl);
+  color: var(--text-muted-dark);
+  border: none;
+  background: none;
+  cursor: pointer;
+  transition: var(--transition-fast);
 }
 
-/* ============================================
-   LIVE SPECTATOR ARENA LAYOUT
-   ============================================ */
-
-.viewer-live-arena {
-  display: flex;
-  flex-direction: row;
-  gap: var(--space-6);
-  min-height: 60vh;
-  flex-wrap: wrap;
-  width: 100%;
-  align-items: stretch;
+.viewer__mobile-nav-btn--active {
+  color: var(--blue-500) !important;
 }
 
-.viewer-live-arena-left {
-  flex: 1;
-  min-width: 280px;
+.viewer__mobile-nav-icon-wrapper {
   position: relative;
 }
 
-.viewer-live-arena-left-blur-glow {
+.viewer__mobile-nav-badge {
   position: absolute;
-  inset: 0;
-  background-color: rgba(59, 130, 246, 0.08);
-  border-radius: 2rem;
-  filter: blur(24px);
-}
-
-.viewer-live-card-container {
-  position: relative;
-  height: 100%;
-  background-color: var(--bg-surface-dark);
-  border-radius: 2rem;
-  border: 1px solid var(--border-dark);
-  padding: var(--space-8);
-  display: flex;
-  flex-direction: column;
-  justify-content: space-between;
-  box-shadow: var(--shadow-2xl);
-}
-
-.viewer-live-category-badge {
-  display: inline-block;
-  padding: var(--space-1) var(--space-3);
-  background-color: rgba(59, 130, 246, 0.1);
-  color: var(--blue-500);
+  top: -2px;
+  right: -2px;
+  width: 8px;
+  height: 8px;
+  background-color: var(--red-500);
+  border: 2px solid var(--slate-950);
   border-radius: var(--radius-full);
+}
+
+.viewer__mobile-nav-label {
   font-size: 10px;
   font-weight: bold;
-  text-transform: uppercase;
-  letter-spacing: 0.05em;
-  margin-bottom: var(--space-4);
-  border: 1px solid rgba(59, 130, 246, 0.2);
 }
 
-.viewer-live-player-title {
-  font-size: var(--text-hero);
-  font-weight: 900;
-  color: #ffffff;
-  line-height: 1.2;
-  margin-bottom: var(--space-2);
-}
-
-.viewer-live-role-subtitle {
-  font-size: var(--text-sub);
-  font-weight: bold;
-  color: var(--text-muted-dark);
-  text-transform: uppercase;
-  letter-spacing: 0.1em;
-  display: flex;
-  align-items: center;
-  gap: var(--space-2);
-}
-
-.viewer-live-base-row {
-  margin-top: var(--space-8);
-  padding-top: var(--space-8);
-  border-top: 1px solid var(--border-dark);
-}
-
-.viewer-live-base-label {
-  color: var(--text-muted-dark);
-  font-size: var(--text-caption);
-  font-weight: bold;
-  text-transform: uppercase;
-  margin-bottom: var(--space-1);
-}
-
-.viewer-live-base-val {
-  font-size: var(--text-title);
-  font-family: var(--font-mono);
-  font-weight: bold;
-  color: #ffffff;
-}
-
-.viewer-live-arena-right {
-  flex: 1.2;
-  min-width: 320px;
+/* Live tab page height locking (desktop + mobile) */
+.viewer__main--live-active {
+  overflow: hidden !important;
+  padding-bottom: 0 !important;
   display: flex;
   flex-direction: column;
-  gap: var(--space-4);
+}
+
+.viewer__main--live-active .viewer__container {
+  flex: 1;
   min-height: 0;
-}
-
-.viewer-live-right-glow-bg {
-  position: absolute;
-  inset: 0;
-  opacity: 0.1;
-  background: radial-gradient(circle at center, transparent 70%);
-}
-
-.viewer-live-indicator-row {
-  position: relative;
-  z-index: 10;
-  display: flex;
-  align-items: center;
-  gap: var(--space-2);
-  margin-bottom: var(--space-8);
-}
-
-.viewer-live-indicator-glow {
-  position: relative;
-  display: flex;
-  width: 12px;
-  height: 12px;
-}
-
-.viewer-live-indicator-ping {
-  position: absolute;
-  display: inline-flex;
-  height: 100%;
-  width: 100%;
-  border-radius: var(--radius-full);
-  background-color: var(--danger);
-  opacity: 0.75;
-}
-
-.viewer-live-indicator-dot {
-  position: relative;
-  display: inline-flex;
-  border-radius: var(--radius-full);
-  height: 12px;
-  width: 12px;
-  background-color: var(--danger);
-}
-
-.viewer-live-bids-label {
-  color: var(--danger);
-  font-weight: bold;
-  text-transform: uppercase;
-  letter-spacing: 0.2em;
-  font-size: var(--text-caption);
-}
-
-.viewer-live-current-bid-row {
-  position: relative;
-  z-index: 10;
-  font-size: 5rem;
-  font-weight: 900;
-  font-family: var(--font-mono);
-  color: #ffffff;
-  text-shadow: 0 4px 8px rgba(0,0,0,0.5);
-  margin-bottom: var(--space-8);
-  display: flex;
-  align-items: baseline;
-}
-
-.viewer-live-current-bid-curr {
-  font-size: var(--text-hero);
-  color: var(--text-muted-dark);
-  margin-right: var(--space-2);
-}
-
-.viewer-live-current-bid-unit {
-  font-size: var(--text-sub);
-  color: var(--text-muted-dark);
-  margin-left: var(--space-2);
-}
-
-.viewer-live-leader-wrapper {
-  position: relative;
-  z-index: 10;
-  width: 100%;
-}
-
-.viewer-live-leader-card {
-  background-color: var(--slate-950);
-  border: 1px solid var(--border-dark);
-  padding: var(--space-4);
-  border-radius: var(--radius-2xl);
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  box-shadow: var(--shadow-xl);
-}
-
-.viewer-live-leader-card-left {
-  display: flex;
-  align-items: center;
-  gap: var(--space-4);
-}
-
-.viewer-live-leader-avatar {
-  width: 3rem;
-  height: 3rem;
-  border-radius: var(--radius-xl);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  color: #ffffff;
-  font-weight: bold;
-  font-size: var(--text-sub);
-  box-shadow: var(--shadow-lg);
-}
-
-.viewer-live-leader-label {
-  color: var(--text-muted-dark);
-  font-size: var(--text-micro);
-  font-weight: bold;
-  text-transform: uppercase;
-}
-
-.viewer-live-leader-name {
-  font-size: var(--text-sub);
-  font-weight: bold;
-  color: #ffffff;
-}
-
-.viewer-live-sold-passed-box {
-  position: relative;
-  z-index: 10;
   display: flex;
   flex-direction: column;
-  align-items: center;
-  text-align: center;
-  background: rgba(10, 15, 30, 0.6);
-  backdrop-filter: blur(16px);
-  -webkit-backdrop-filter: blur(16px);
-  border: 1px solid rgba(255, 255, 255, 0.08);
-  padding: var(--space-8) var(--space-6);
-  border-radius: var(--radius-3xl);
-  box-shadow: 0 24px 48px -12px rgba(0, 0, 0, 0.5), inset 0 1px 0 rgba(255, 255, 255, 0.1);
-  width: 100%;
-  max-width: 440px;
-  margin: 0 auto;
-  animation: modalPop 0.4s cubic-bezier(0.34, 1.56, 0.64, 1) forwards;
+  padding-top: 0;
+  padding-bottom: 0;
 }
 
-@keyframes modalPop {
-  0% { transform: scale(0.9) translateY(20px); opacity: 0; }
-  100% { transform: scale(1) translateY(0); opacity: 1; }
-}
-
-.viewer-live-sold-passed-glow {
-  position: absolute;
-  inset: 0;
-  opacity: 0.15;
-  filter: blur(80px);
-  pointer-events: none;
-  animation: pulseGlow 4s ease-in-out infinite alternate;
-}
-
-@keyframes pulseGlow {
-  0% { transform: scale(1); opacity: 0.12; }
-  100% { transform: scale(1.15); opacity: 0.22; }
-}
-
-.viewer-live-sold-passed-name {
-  font-size: var(--text-hero);
-  font-weight: 900;
-  color: #ffffff;
-  margin-bottom: var(--space-2);
-  letter-spacing: -0.02em;
-  background: linear-gradient(135deg, #ffffff 0%, #e2e8f0 100%);
-  -webkit-background-clip: text;
-  -webkit-text-fill-color: transparent;
-}
-
-.viewer-live-sold-passed-meta {
-  color: var(--text-muted-dark);
-  font-weight: 700;
-  text-transform: uppercase;
-  letter-spacing: 0.08em;
-  font-size: var(--text-secondary);
-  margin-bottom: var(--space-6);
-  display: flex;
-  align-items: center;
-  gap: var(--space-2);
-  background: rgba(255, 255, 255, 0.05);
-  padding: var(--space-1.5) var(--space-3);
-  border-radius: var(--radius-full);
-  border: 1px solid rgba(255, 255, 255, 0.05);
-}
-
-.viewer-live-sold-passed-stamp {
-  font-size: 3.5rem;
-  font-weight: 900;
-  text-transform: uppercase;
-  letter-spacing: 0.05em;
-  padding: var(--space-2) var(--space-6);
-  border: 4px double currentColor;
-  border-radius: var(--radius-lg);
-  transform: rotate(-5deg);
-  display: inline-block;
-  margin: var(--space-4) 0;
-  animation: stampSlam 0.5s cubic-bezier(0.175, 0.885, 0.32, 1.275) 0.2s both;
-  box-shadow: 0 0 20px rgba(0, 0, 0, 0.2);
-}
-
-@keyframes stampSlam {
-  0% { transform: scale(3) rotate(-15deg); opacity: 0; filter: blur(4px); }
-  100% { transform: scale(1) rotate(-5deg); opacity: 1; filter: blur(0); }
-}
-
-.viewer-live-sold-buyer-box {
-  margin-top: var(--space-6);
-  background: linear-gradient(135deg, rgba(15, 23, 42, 0.9) 0%, rgba(30, 41, 59, 0.9) 100%);
-  padding: var(--space-5) var(--space-6);
-  border-radius: var(--radius-2xl);
-  border: 1px solid rgba(255, 255, 255, 0.08);
+.viewer__main--live-active .live-auction__wrapper {
+  flex: 1;
+  min-height: 0;
   display: flex;
   flex-direction: column;
-  align-items: center;
-  width: 100%;
-  box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.3);
+  overflow: hidden;
+  gap: 0;
 }
 
-.viewer-live-sold-buyer-label {
-  color: var(--text-muted-dark);
-  font-size: var(--text-micro);
-  text-transform: uppercase;
-  font-weight: 800;
-  letter-spacing: 0.1em;
-  margin-bottom: var(--space-3);
-  position: relative;
-}
-
-.viewer-live-sold-buyer-label::after {
-  content: '';
-  position: absolute;
-  bottom: -6px;
-  left: 50%;
-  transform: translateX(-50%);
-  width: 16px;
-  height: 2px;
-  background-color: currentColor;
-  opacity: 0.3;
-}
-
-.viewer-live-sold-buyer-name {
-  font-size: var(--text-card);
-  font-weight: 800;
-  margin-top: var(--space-1);
-  margin-bottom: var(--space-1);
-  letter-spacing: -0.01em;
-}
-
-.viewer-live-sold-buyer-price {
-  font-size: var(--text-hero);
-  font-family: var(--font-mono);
-  font-weight: 900;
-  color: var(--success);
-  margin-top: var(--space-2);
-  text-shadow: 0 0 15px rgba(34, 197, 94, 0.3);
-}
-
-/* ——————————————————————————
-   LIVE ACTIVE LAYOUT — sticky card + history
-   —————————————————————————— */
-
-/* Mobile default: stacked column */
-.viewer-live-layout {
-  display: flex;
-  flex-direction: column;
-  gap: var(--sp-2);
-  width: 100%;
-  align-items: flex-start;
-}
-
-/* Desktop: side-by-side grid */
+/* Desktop screen rules */
 @media (min-width: 768px) {
-  .viewer-live-layout {
-    display: grid;
-    grid-template-columns: minmax(300px, 400px) 1fr;
-    gap: var(--sp-6);
-    align-items: start; /* both columns start at the top; left is sticky */
-  }
-
-  /* On desktop, the history section sits in the right column, flows naturally */
-  .viewer-live-history-section {
-    padding: 0 0 var(--sp-6);
+  .viewer__mobile-nav {
+    display: none !important;
   }
 }
 
-/* ——————————————————————————
-   STICKY LIVE BID CARD & NATURAL HISTORY
-   —————————————————————————— */
-
-.viewer-live-sticky-card {
-  position: sticky;
-  top: 0;
-  z-index: 30;
-  background-color: var(--bg-surface-dark); /* Same dark bg as original card-container (#131827) */
-  border: 1px solid var(--border-dark);
-  border-radius: 2rem; /* Matches original card-container's 2rem */
-  box-shadow: var(--shadow-2xl);
-  padding: var(--sp-8);
-  margin-bottom: var(--sp-4);
-  width: 100%;
-  overflow: hidden; /* clips the glow bg to card border-radius */
-  display: flex;
-  flex-direction: column;
-}
-
-@media (min-width: 768px) {
-  .viewer-live-sticky-card {
-    top: 60px; /* Below the sticky header on desktop */
-  }
-}
-
-/* glow bg already clipped by parent overflow:hidden */
-.viewer-live-sticky-card > .viewer-live-right-glow-bg {
-  border-radius: inherit;
-}
-
-/* Full-width divider that bleeds to the card's edge — margin = negative of card padding */
-.viewer-live-divider {
-  height: 1px;
-  background-color: var(--border);
-  margin: 0 calc(-1 * var(--sp-8)); /* matches desktop card padding */
-  flex-shrink: 0;
-}
-
+/* Responsive layout adjustments for mobile */
 @media (max-width: 767px) {
-  .viewer-live-divider {
-    margin: 0 calc(-1 * var(--sp-5)) !important; /* matches mobile card padding override */
+  .viewer__desktop-nav {
+    display: none !important;
+  }
+
+  .viewer__mobile-nav {
+    display: flex !important;
+    flex-shrink: 0;
+    position: relative;
+    bottom: auto;
+    left: auto;
+    right: auto;
+  }
+
+  .viewer__main {
+    flex: 1;
+    min-height: 0;
+    overflow-y: auto;
+    padding-bottom: var(--sp-4);
   }
 }
-
-.viewer-live-unified-top {
-  padding-bottom: var(--sp-5);
-  flex-shrink: 0;
-}
-
-.viewer-live-unified-mid {
-  padding: var(--sp-5) 0;
-  flex-shrink: 0;
-}
-
-/* History section: borderless — flows as a natural continuation below the sticky card */
-.viewer-live-history-section {
-  padding: var(--sp-2) var(--sp-6) var(--sp-6);
-  width: 100%;
-}
-
-.viewer-live-history-list-natural {
-  display: flex;
-  flex-direction: column;
-}
-
-/* ——— Mobile Viewer Adjustments ——— */
-@media (max-width: 767px) {
-  .viewer-live-arena {
-    gap: var(--sp-4) !important;
-    min-height: auto !important;
-    flex-direction: column !important;
-  }
-  
-  .viewer-live-arena-left,
-  .viewer-live-arena-right {
-    min-width: 100% !important;
-    width: 100% !important;
-  }
-  
-  .viewer-live-arena-right {
-    min-width: 100% !important;
-    flex-grow: 1 !important;
-  }
-  
-  .viewer-live-card-container {
-    padding: var(--sp-4) !important;
-  }
-  
-  /* Live card in split-panel: comfortable padding, more height */
-  .live-auction-card,
-  .viewer-live-sticky-card {
-    padding: var(--sp-6) var(--sp-5) !important;
-    border-radius: 1.25rem !important;
-    margin-bottom: 0 !important;
-  }
-
-  /* Section padding: more vertical space */
-  .viewer-live-unified-top {
-    padding-bottom: var(--sp-5) !important;
-  }
-
-  .viewer-live-unified-mid {
-    padding: var(--sp-4) 0 !important;
-  }
-
-  /* Current bid: bigger and bolder */
-  .viewer-live-current-bid-row {
-    font-size: 3.5rem !important;
-    margin-bottom: var(--sp-3) !important;
-    line-height: 1 !important;
-  }
-  
-  .viewer-live-indicator-row {
-    margin-bottom: var(--sp-3) !important;
-  }
-
-  /* Player title: bigger on mobile */
-  .viewer-live-player-title {
-    font-size: 2rem !important;
-    margin-bottom: 3px !important;
-  }
-
-  /* Shrink category badge on mobile */
-  .viewer-live-category-badge {
-    font-size: 9px !important;
-    padding: 2px 6px !important;
-    margin-bottom: var(--sp-1) !important;
-  }
-
-  /* Leader card: give it a bit more room */
-  .viewer-live-leader-card {
-    padding: var(--sp-3) var(--sp-4) !important;
-  }
-  
-  /* viewer-live-history-list is the old class — no max-height needed now */
-  
-  .viewer-live-leader-wrapper {
-    margin-bottom: var(--sp-2) !important;
-  }
-  
-  .viewer-live-base-row {
-    margin-top: var(--sp-4) !important;
-    padding-top: var(--sp-4) !important;
-  }
-  
-  .viewer-live-base-val {
-    font-size: 1.75rem !important;
-  }
-
-  .viewer-live-history-container {
-    margin-top: var(--sp-4) !important;
-    padding-top: var(--sp-3) !important;
-  }
-
-  /* History section padding — tighter on mobile */
-  .viewer-live-history-section {
-    padding: 0 var(--sp-4) var(--sp-4) !important;
-  }
-}
-
-

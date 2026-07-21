@@ -1,0 +1,824 @@
+/* Teams Tab Scoped Styles using BEM standard */
+
+.teams-setup {
+  display: flex;
+  gap: var(--sp-6);
+  max-width: 80rem;
+  margin: 0 auto;
+  flex-direction: column;
+}
+
+@media (min-width: 1024px) {
+  .teams-setup { flex-direction: row; }
+  
+  .teams-setup__col-form {
+    position: sticky;
+    top: 24px;
+    height: fit-content;
+  }
+}
+
+.teams-setup__col-form {
+  flex: 0.8;
+  min-width: 0;
+}
+
+.teams-setup__col-grid {
+  flex: 2;
+  min-width: 0;
+}
+
+.teams-setup__form-card,
+.teams-setup__list-card {
+  background-color: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-2xl);
+  padding: var(--sp-6);
+}
+
+.teams-setup__archive-card {
+  text-align: center;
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-3);
+  align-items: center;
+  justify-content: center;
+  min-height: 300px;
+}
+
+.teams-setup__archive-title {
+  font-size: var(--text-secondary);
+  font-weight: bold;
+  margin: 0;
+  color: var(--text-primary);
+}
+
+.teams-setup__archive-text {
+  color: var(--text-muted);
+  font-size: 11px;
+  line-height: 1.4;
+}
+
+.teams-setup__form-title {
+  font-size: var(--text-sub);
+  font-weight: bold;
+  margin-bottom: var(--sp-6);
+}
+
+.teams-setup__form {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-4);
+}
+
+.teams-setup__input-group {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-2);
+}
+
+.teams-setup__input-label {
+  font-size: var(--text-micro);
+  font-weight: bold;
+  text-transform: uppercase;
+  color: var(--text-muted);
+  letter-spacing: 0.05em;
+}
+
+.teams-setup__input-field {
+  width: 100%;
+  height: 42px;
+  background-color: var(--bg-elevated);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  padding: 0 var(--sp-3);
+  color: var(--text-primary);
+  font-size: var(--text-secondary);
+  outline: none;
+  transition: border-color var(--transition-fast);
+}
+
+.teams-setup__input-field:focus {
+  border-color: var(--accent);
+}
+
+.teams-setup__color-field-row {
+  display: flex;
+  gap: var(--sp-2);
+}
+
+.teams-setup__color-input {
+  width: 3.5rem;
+  height: 2.5rem;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  padding: 4px;
+  cursor: pointer;
+  background-color: transparent;
+}
+
+.teams-setup__submit-btn {
+  padding: var(--sp-3) !important;
+  margin-top: var(--sp-2) !important;
+  width: 100%;
+}
+
+.teams-setup__list-title {
+  font-size: var(--text-sub);
+  font-weight: bold;
+  margin-bottom: var(--sp-6);
+}
+
+.teams-setup__grid {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: var(--sp-4);
+}
+
+@media (min-width: 640px) {
+  .teams-setup__grid {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}
+
+.teams-setup__card {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: var(--sp-4);
+  padding: var(--sp-5);
+  border-radius: var(--radius-2xl);
+  background-color: var(--bg-card);
+  transition: transform var(--transition-fast), border-color var(--transition-fast), box-shadow var(--transition-fast);
+  border: 1.5px solid var(--border);
+  cursor: pointer;
+}
+
+.teams-setup__card:hover {
+  transform: translateY(-2px);
+  border-color: var(--border-strong);
+}
+
+.teams-setup__card-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  width: 100%;
+}
+
+.teams-setup__card-left {
+  display: flex;
+  gap: var(--sp-3);
+  align-items: center;
+  min-width: 0;
+}
+
+.teams-setup__card-avatar {
+  width: 38px;
+  height: 38px;
+  border-radius: 10px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: 800;
+  font-size: 12px;
+}
+
+.teams-setup__card-details {
+  min-width: 0;
+}
+
+.teams-setup__card-name {
+  font-weight: bold;
+  font-size: var(--text-secondary);
+  color: var(--text-primary);
+  margin: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.teams-setup__card-role-row {
+  display: flex;
+  align-items: center;
+  margin-top: 2px;
+  flex-wrap: nowrap;
+}
+
+.teams-setup__card-role-text {
+  font-size: 10px;
+  color: var(--text-muted);
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+
+.teams-setup__card-dot {
+  color: var(--text-muted);
+  opacity: 0.6;
+  font-size: 10px;
+  flex-shrink: 0;
+  margin: 0 5px;
+  display: inline-block;
+  line-height: 1;
+}
+
+.teams-setup__card-purse {
+  font-size: 10px;
+  font-weight: bold;
+  color: var(--text-muted);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.teams-setup__stats-row {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: var(--sp-3);
+  width: 100%;
+  border-top: 1px solid var(--border);
+  border-bottom: 1px solid var(--border);
+  padding: var(--sp-4) 0;
+}
+
+.teams-setup__stats-col {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-1.5);
+  min-width: 0;
+  padding-right: var(--sp-2);
+}
+
+.teams-setup__stats-col--border {
+  border-left: 1px solid var(--border);
+  padding-left: var(--sp-3);
+}
+
+.teams-setup__stats-header {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-1.5);
+}
+
+.teams-setup__stats-icon-bg {
+  width: 22px;
+  height: 22px;
+  border-radius: 6px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.teams-setup__stats-icon-bg--purse {
+  background-color: rgba(37,99,235,0.08);
+}
+
+.teams-setup__stats-icon-bg--spent {
+  background-color: rgba(22,163,74,0.08);
+}
+
+.teams-setup__stats-icon-bg--slots {
+  background-color: rgba(234,179,8,0.08);
+}
+
+.teams-setup__stats-label {
+  font-size: 8px;
+  font-weight: 800;
+  color: var(--text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.teams-setup__stats-value {
+  font-size: 18px;
+  font-weight: 900;
+  margin-top: 2px;
+  line-height: 1;
+}
+
+.teams-setup__stats-value--purse {
+  color: #2563eb;
+}
+
+.teams-setup__stats-value--spent {
+  color: #16a34a;
+}
+
+.teams-setup__stats-value--slots {
+  color: #ea580c;
+}
+
+.teams-setup__stats-max {
+  font-size: 9px;
+  color: var(--text-muted);
+}
+
+.teams-setup__stats-gauge {
+  margin: var(--sp-2) auto 0 auto;
+  display: block;
+  overflow: visible;
+}
+
+.teams-setup__stats-gauge-text {
+  font-size: 10px;
+  font-weight: bold;
+  fill: var(--text-muted);
+  font-family: var(--font-mono);
+}
+
+.teams-setup__squad-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  width: 100%;
+}
+
+.teams-setup__squad-label {
+  font-size: var(--text-micro);
+  font-weight: bold;
+  color: var(--text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.teams-setup__squad-dots {
+  display: flex;
+  gap: 3px;
+  align-items: center;
+}
+
+.teams-setup__squad-dot-item {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+}
+
+.teams-setup__card-footer {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  width: 100%;
+  font-size: 11px;
+  color: var(--text-muted);
+  margin-top: 2px;
+}
+
+.teams-setup__card-footer-left {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.teams-setup__card-footer-link {
+  font-weight: bold;
+  color: var(--accent);
+  display: flex;
+  align-items: center;
+  gap: 2px;
+}
+
+/* Modal scoped BEM styles */
+
+.team-edit-modal__title-row {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-2);
+}
+
+.team-edit-modal__header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  width: 100%;
+  padding-right: var(--sp-4);
+}
+
+.team-edit-modal__header-left {
+  display: flex;
+  gap: var(--sp-3);
+  align-items: center;
+}
+
+.team-edit-modal__logo {
+  width: 54px;
+  height: 54px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background-color: color-mix(in srgb, var(--team-color) 15%, transparent);
+  border: 2px solid var(--team-color);
+  color: var(--team-color);
+  box-shadow: 0 4px 10px color-mix(in srgb, var(--team-color) 20%, transparent);
+}
+
+.team-edit-modal__logo-text {
+  font-weight: 900;
+  font-size: var(--text-card-title);
+}
+
+.team-edit-modal__details {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+
+.team-edit-modal__name {
+  font-size: var(--text-card);
+  font-weight: var(--weight-black);
+  margin: 0;
+  color: var(--text-primary);
+}
+
+.team-edit-modal__purse-row {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-2);
+  margin-top: var(--sp-0.5);
+}
+
+.team-edit-modal__purse-label {
+  font-size: var(--text-micro);
+  font-weight: bold;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--text-muted);
+}
+
+.team-edit-modal__content {
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+}
+
+.team-edit-modal__stats-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 16px;
+  padding: 0;
+  margin-bottom: 16px; /* Spec: Top margin from stats = 16px */
+}
+
+@media (max-width: 640px) {
+  .team-edit-modal__stats-grid {
+    grid-template-columns: 1fr;
+    gap: 12px;
+  }
+}
+
+.team-edit-modal__stats-card {
+  padding: 16px !important;
+  border-radius: 12px !important;
+  background-color: #F8FAFC !important;
+  border: 1px solid #E5E7EB !important;
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+}
+
+.team-edit-modal__stats-card .teams-setup__stats-icon-bg {
+  width: 24px !important;
+  height: 24px !important;
+  border-radius: 6px !important;
+}
+
+.team-edit-modal__stats-card .teams-setup__stats-icon-bg svg {
+  width: 18px !important;
+  height: 18px !important;
+}
+
+.team-edit-modal__stats-header-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 8px;
+}
+
+.team-edit-modal__stats-label {
+  font-size: 12px !important;
+  color: #6B7280 !important;
+  font-weight: 500 !important;
+  text-transform: none !important;
+  letter-spacing: normal !important;
+}
+
+.team-edit-modal__stats-value {
+  font-size: 20px !important;
+  font-weight: 700 !important;
+  color: #111827 !important;
+  line-height: 1.2 !important;
+  display: flex;
+  align-items: baseline;
+  gap: 4px;
+  margin-bottom: 8px;
+}
+
+.team-edit-modal__stats-subtext {
+  font-size: 12px !important;
+  font-weight: 500 !important;
+  color: #6B7280 !important;
+}
+
+.team-edit-modal__stats-card .team-edit-modal__progress-bar {
+  height: 6px !important;
+  border-radius: 999px !important;
+  margin-top: 8px !important;
+}
+
+.team-edit-modal__content-section {
+  display: flex;
+  flex-direction: column;
+  margin-bottom: 24px; /* Spec: Top margin from squad = 24px */
+}
+
+.team-edit-modal__subtitle {
+  font-size: 16px !important;
+  font-weight: 600 !important;
+  color: #111827 !important;
+  text-transform: none !important;
+  letter-spacing: normal !important;
+  margin: 0 0 16px 0 !important;
+}
+
+.team-edit-modal__role-list {
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+  padding: 16px !important;
+  background-color: #F8FAFC !important;
+  border: 1px solid #E5E7EB !important;
+  border-radius: 12px !important;
+}
+
+.team-edit-modal__role-row {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 12px 0 !important;
+}
+
+.team-edit-modal__role-row:not(:last-child) {
+  border-bottom: 1px solid #EEF2F7 !important;
+}
+
+.team-edit-modal__role-row:first-child {
+  padding-top: 0 !important;
+}
+
+.team-edit-modal__role-row:last-child {
+  padding-bottom: 0 !important;
+}
+
+.team-edit-modal__role-info-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.team-edit-modal__role-title-group {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.team-edit-modal__role-name {
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--text-primary);
+}
+
+.team-edit-modal__role-count {
+  font-size: 12px;
+  font-weight: 700;
+  font-family: var(--font-mono);
+  color: var(--text-muted);
+}
+
+.team-edit-modal__role-row .team-edit-modal__progress-bar {
+  height: 6px !important;
+  border-radius: 999px !important;
+}
+
+.team-edit-modal__progress-bar {
+  height: 5px;
+}
+
+.team-edit-modal__squad-section {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  margin-top: 0;
+}
+
+.team-edit-modal__squad-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  border-bottom: 1px solid var(--border);
+  padding-bottom: var(--sp-2);
+}
+
+.team-edit-modal__squad-title {
+  font-size: 16px !important;
+  font-weight: 600 !important;
+  color: #111827 !important;
+}
+
+.team-edit-modal__toggle-stats-btn {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-1);
+  color: #2563EB !important;
+  font-size: 14px !important;
+  font-weight: 600 !important;
+  cursor: pointer;
+  border: none;
+  background: none;
+}
+
+.team-edit-modal__empty-state {
+  height: 8rem;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  color: var(--text-muted);
+  border: 2px dashed var(--border);
+  border-radius: var(--radius-xl);
+  padding: var(--sp-4);
+  text-align: center;
+}
+
+.team-edit-modal__empty-title {
+  font-size: var(--text-caption);
+  font-weight: bold;
+  color: var(--text-primary);
+}
+
+.team-edit-modal__empty-subtitle {
+  font-size: 10px;
+  color: var(--text-muted);
+  margin-top: 4px;
+}
+
+.team-edit-modal__go-live-btn {
+  padding: var(--sp-2) var(--sp-4);
+  font-size: 11px;
+  margin-top: var(--sp-2);
+}
+
+.team-edit-modal__squad-list {
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+  overflow-y: auto;
+  padding: 4px 0;
+  margin: 0 -4px;
+  transition: max-height 0.2s ease-in-out;
+}
+
+@media (max-width: 640px) {
+  .team-edit-modal__squad-list {
+    margin: 0;
+  }
+}
+
+.team-edit-modal__player-card {
+  padding: 12px 16px !important;
+  display: flex !important;
+  flex-direction: row !important;
+  justify-content: space-between !important;
+  align-items: center !important;
+  border-radius: 12px !important;
+  background-color: #FFFFFF !important;
+  border: 1px solid #E5E7EB !important;
+  margin-bottom: 10px !important;
+  transition: var(--transition-fast);
+}
+.team-edit-modal__player-card:hover {
+  border-color: var(--accent-light);
+  box-shadow: var(--shadow-sm);
+}
+
+.team-edit-modal__player-info {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.team-edit-modal__player-rank {
+  width: 24px !important;
+  height: 24px !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  background-color: #F1F5F9 !important;
+  border-radius: 6px !important;
+  color: #6B7280 !important;
+  font-weight: 600 !important;
+  font-size: 11px !important;
+  min-width: 24px !important;
+}
+
+.team-edit-modal__player-name {
+  font-size: 15px !important;
+  font-weight: 600 !important;
+  color: #111827 !important;
+}
+
+.team-edit-modal__player-price {
+  font-family: var(--font-mono);
+  font-weight: 600 !important;
+  color: #16A34A !important;
+  font-size: 15px !important;
+}
+
+.team-edit-modal__player-meta {
+  padding-left: 0;
+  font-size: 12px !important;
+  color: #6B7280 !important;
+  margin-top: 2px !important;
+}
+
+.team-edit-modal__edit-icon {
+  opacity: 0.7;
+}
+
+.team-edit-modal__edit-form {
+  padding: var(--sp-2) 0;
+}
+
+.team-edit-modal__color-input-text {
+  flex: 1;
+}
+
+.team-edit-modal__form-actions {
+  display: flex;
+  gap: var(--sp-3);
+  margin-top: var(--sp-4);
+  justify-content: flex-end;
+}
+
+.team-edit-modal__squad-list--collapsed {
+  max-height: 280px;
+}
+
+.team-edit-modal__squad-list--expanded {
+  max-height: 480px;
+}
+
+.team-edit-modal__role-icon--batsman {
+  color: #2563EB !important;
+}
+
+.team-edit-modal__role-icon--bowler {
+  color: #16A34A !important;
+}
+
+.team-edit-modal__role-icon--allrounder {
+  color: #F97316 !important;
+}
+
+.team-edit-modal__role-icon--wktkeeper {
+  color: #8B5CF6 !important;
+}
+
+.team-edit-modal__progress-fill--players {
+  background-color: #2563EB !important;
+}
+
+.team-edit-modal__progress-fill--purse {
+  background-color: #16A34A !important;
+}
+
+.team-edit-modal__progress-fill--spent {
+  background-color: #7C3AED !important;
+}
+
+.team-edit-modal__progress-fill--batsman {
+  background-color: #2563EB !important;
+}
+
+.team-edit-modal__progress-fill--bowler {
+  background-color: #16A34A !important;
+}
+
+.team-edit-modal__progress-fill--allrounder {
+  background-color: #F97316 !important;
+}
+
+.team-edit-modal__progress-fill--wktkeeper {
+  background-color: #8B5CF6 !important;
+}
+
+.team-edit-modal__stats-value--purse {
+  color: #16A34A !important;
+}
+
+.team-edit-modal__stats-value--spent {
+  color: #7C3AED !important;
+}

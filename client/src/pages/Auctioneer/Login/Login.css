@@ -1,0 +1,33 @@
+/* Host Login — accent overrides on shared super-login structure */
+
+/* Trophy accent color for host login (vs. danger for super admin) */
+.login-logo-container {
+  background-color: var(--accent-muted) !important;
+  border-color: var(--accent-border) !important;
+}
+
+.login-logo-container svg {
+  color: var(--accent) !important;
+}
+
+/* Top bar override — accent instead of danger */
+.login-logo-container ~ .super-login-border-top {
+  background: var(--accent);
+}
+
+/* Button layout row */
+.login-btn-row {
+  display: flex;
+  gap: var(--sp-3);
+}
+
+.login-btn-row .btn-secondary { flex: 1; }
+.login-btn-row .btn-primary   { flex: 2; }
+
+/* Compat alias */
+.login-margin-bottom { margin-bottom: var(--sp-6); }
+
+.super-login-title {
+  font-size: var(--text-card-title, 24px);
+}
+

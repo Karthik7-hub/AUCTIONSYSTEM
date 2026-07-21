@@ -1,0 +1,57 @@
+/* Settings Tab Scoped Styles using BEM standard */
+
+.settings-setup {
+  padding: 0 !important;
+}
+
+.settings-setup__col {
+  flex: 1.5;
+}
+
+.settings-setup__card {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-6);
+}
+
+.settings-setup__title {
+  font-size: var(--text-sub);
+  font-weight: bold;
+  margin: 0;
+}
+
+.settings-setup__input--readonly {
+  opacity: 0.8;
+}
+
+.settings-setup__access-wrapper {
+  position: relative;
+  width: 100%;
+}
+
+.settings-setup__access-input {
+  opacity: 0.8;
+  padding-right: 2.5rem !important;
+}
+
+.settings-setup__toggle-btn {
+  position: absolute;
+  right: 12px;
+  top: 50%;
+  transform: translateY(-50%);
+  background: none;
+  border: none;
+  color: var(--text-muted);
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  padding: 0;
+}
+
+.settings-setup__badge-strip {
+  margin: 0 !important;
+}
+
+.settings-setup__badge {
+  text-transform: none !important;
+}

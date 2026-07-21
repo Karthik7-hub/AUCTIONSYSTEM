@@ -8,6 +8,10 @@ const AuctionSchema = new mongoose.Schema({
     status: { type: String, enum: ['draft', 'live', 'completed'], default: 'draft' },
 
     // NEW FIELDS (With defaults for safety)
+    isStrictRandom: {
+        type: Boolean,
+        default: false
+    },
     categories: {
         type: [String],
         default: ['Marquee', 'Set 1', 'Set 2', 'Set 3', 'Set 4']
@@ -19,7 +23,9 @@ const AuctionSchema = new mongoose.Schema({
     slug: {
         type: String,
         unique: true
-    }
+    },
+    isArchived: { type: Boolean, default: false },
+    archivedAt: { type: Date, default: null }
 });
 
 // Function to convert name to URL-friendly slug

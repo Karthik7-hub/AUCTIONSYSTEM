@@ -1,18 +1,18 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { useParams, useNavigate, Routes, Route, Navigate } from 'react-router-dom';
 import io from 'socket.io-client';
-import Login from '@pages/Login/Login';
-import SetupDashboard from '@pages/Admin/SetupDashboard';
-import AuctioneerControls from '@pages/Admin/AuctioneerControls';
-import ViewerScreen from '@pages/Viewer/ViewerScreen';
+import Login from '@pages/Auctioneer/Login/Login';
+import SetupDashboard from '@pages/Auctioneer/SetupDashboard';
+import AuctioneerControls from '@pages/Auctioneer/AuctioneerControls';
+import ViewerScreen from '@pages/Viewer';
 import { API_URL } from '@config/api';
-import { getAuctionInit } from '@services/auction.service';
+import { getAuctionInit } from '@domains/auction';
 import { verifyStoredToken, getAccessToken, clearTokens } from '@services/auth.service';
 
 // Auth guard: redirects to login sub-route if not authenticated
-function ProtectedRoute({ isAuthenticated, auctionId, children }) {
+function ProtectedRoute({ isAuthenticated, slug, children }) {
     if (!isAuthenticated) {
-        return <Navigate to={`/auction/${auctionId}/login`} replace />;
+        return <Navigate to={`/auction/${slug}/login`} replace />;
     }
     return children;
 }
@@ -31,6 +31,17 @@ export default function AuctionLayout() {
     const [actualId, setActualId] = useState(null);
     const [notFound, setNotFound] = useState(false);
     const [isLoading, setIsLoading] = useState(true);
+
+    // Auto-canonicalize URL: replace raw MongoDB ObjectId with clean human-readable slug in address bar
+    useEffect(() => {
+        if (config?.slug && auctionId !== config.slug) {
+            const currentPath = window.location.pathname;
+            if (currentPath.includes(`/auction/${auctionId}`)) {
+                const newPath = currentPath.replace(`/auction/${auctionId}`, `/auction/${config.slug}`);
+                navigate(newPath, { replace: true });
+            }
+        }
+    }, [config?.slug, auctionId, navigate]);
 
     // Memoize the array conversions so children get stable array references and only re-render when needed
     const teams = useMemo(() => Object.values(teamsById), [teamsById]);
@@ -127,44 +138,42 @@ export default function AuctionLayout() {
             }
         });
 
-        newSocket.on('player_updated', ({ player }) => {
+        newSocket.on('player_added', ({ player }) => {
             setPlayersById(prev => ({ ...prev, [player._id]: player }));
-            setOrderedPlayerIds(prev => {
-                if (prev.includes(player._id)) return prev;
-                return [...prev, player._id];
-            });
+            setOrderedPlayerIds(prev => prev.includes(player._id) ? prev : [...prev, player._id]);
         });
 
-        newSocket.on('player_deleted', ({ playerId, updatedTeam }) => {
+        newSocket.on('player_updated', ({ player }) => {
+            setPlayersById(prev => ({ ...prev, [player._id]: player }));
+        });
+
+        newSocket.on('player_deleted', ({ playerId }) => {
             setPlayersById(prev => {
                 const copy = { ...prev };
                 delete copy[playerId];
                 return copy;
             });
             setOrderedPlayerIds(prev => prev.filter(id => id !== playerId));
-            if (updatedTeam) {
-                setTeamsById(prev => ({ ...prev, [updatedTeam._id]: updatedTeam }));
-            }
         });
 
-        newSocket.on('player_sold', ({ player, team }) => {
-            setPlayersById(prev => ({ ...prev, [player._id]: player }));
-            setTeamsById(prev => ({ ...prev, [team._id]: team }));
+        newSocket.on('players_reordered', ({ playerIds }) => {
+            setOrderedPlayerIds(playerIds);
         });
 
-        newSocket.on('data_refreshed', ({ teams, players }) => {
-            console.log('🔄 Data refreshed via socket stream:', teams, players);
-            const tMap = {};
-            (teams || []).forEach(t => { tMap[t._id] = t; });
-            setTeamsById(tMap);
-
-            const pMap = {};
-            (players || []).forEach(p => { pMap[p._id] = p; });
-            setPlayersById(pMap);
-            setOrderedPlayerIds((players || []).map(p => p._id));
+        newSocket.on('player_reset', ({ playerId }) => {
+            setPlayersById(prev => {
+                if (!prev[playerId]) return prev;
+                return { ...prev, [playerId]: { ...prev[playerId], isSold: false, soldTo: null, soldPrice: 0 } };
+            });
         });
 
-        newSocket.on('auction_state', (state) => setLiveState(state));
+        newSocket.on('live_state_update', (newLiveState) => {
+            setLiveState(newLiveState);
+        });
+
+        newSocket.on('data_refresh', () => {
+            loadData();
+        });
 
         return () => newSocket.disconnect();
     }, [auctionId]);
@@ -175,8 +184,9 @@ export default function AuctionLayout() {
         if (!socket || !actualId) return;
 
         const handleConnect = () => {
-            console.log('🔌 Socket connected/reconnected, joining room:', actualId);
-            socket.emit('join_auction', actualId);
+            if (actualId) {
+                socket.emit('join_auction', actualId);
+            }
         };
 
         if (socket.connected) {
@@ -202,20 +212,33 @@ export default function AuctionLayout() {
         return <Navigate to="/" replace />;
     }
 
+    const displaySlug = config?.slug || auctionId;
     const targetId = actualId || auctionId;
+
+    const handleLogout = () => {
+        if (actualId) clearTokens(actualId);
+        if (auctionId) clearTokens(auctionId);
+        if (config?.slug) clearTokens(config.slug);
+        setIsAuthenticated(false);
+        navigate(`/auction/${displaySlug}/login`);
+    };
+
     const sharedProps = { data, liveState, auctionId: targetId, config };
 
     return (
         <Routes>
-            <Route path="/" element={<ViewerScreen {...sharedProps} isAuthenticated={isAuthenticated} />} />
+            <Route
+                path="/"
+                element={<ViewerScreen {...sharedProps} isAuthenticated={isAuthenticated} />}
+            />
 
-            <Route path="login" element={<Login auctionId={targetId} setIsAuthenticated={setIsAuthenticated} config={config} />} />
+            <Route path="login" element={<Login auctionId={targetId} isAuthenticated={isAuthenticated} setIsAuthenticated={setIsAuthenticated} config={config} />} />
 
             <Route
                 path="setup"
                 element={
-                    <ProtectedRoute isAuthenticated={isAuthenticated} auctionId={targetId}>
-                        <SetupDashboard {...sharedProps} onRefresh={() => socket.emit('data_update', { auctionId: targetId })} />
+                    <ProtectedRoute isAuthenticated={isAuthenticated} slug={displaySlug}>
+                        <SetupDashboard {...sharedProps} onLogout={handleLogout} onRefresh={() => socket.emit('data_update', { auctionId: targetId, token: getAccessToken(targetId) })} />
                     </ProtectedRoute>
                 }
             />
@@ -223,13 +246,13 @@ export default function AuctionLayout() {
             <Route
                 path="live"
                 element={
-                    <ProtectedRoute isAuthenticated={isAuthenticated} auctionId={targetId}>
+                    <ProtectedRoute isAuthenticated={isAuthenticated} slug={displaySlug}>
                         <AuctioneerControls {...sharedProps} socket={socket} />
                     </ProtectedRoute>
                 }
             />
 
-            <Route path="*" element={<Navigate to={`/auction/${auctionId}`} replace />} />
+            <Route path="*" element={<Navigate to={`/auction/${displaySlug}`} replace />} />
         </Routes>
     );
 }

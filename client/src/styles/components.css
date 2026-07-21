@@ -446,7 +446,7 @@ textarea.input-field {
 .modal-overlay {
   position: fixed;
   inset: 0;
-  z-index: 200;
+  z-index: 99999 !important;
   display: flex;
   align-items: center;
   justify-content: center;

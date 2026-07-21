@@ -3,6 +3,7 @@ const router = express.Router();
 const playerController = require('../controllers/playerController');
 
 router.post('/api/players', playerController.createPlayer);
+router.post('/api/players/bulk', playerController.bulkCreatePlayers);
 router.put('/api/players/:id', playerController.updatePlayer);
 router.delete('/api/players/:id', playerController.deletePlayer);
 

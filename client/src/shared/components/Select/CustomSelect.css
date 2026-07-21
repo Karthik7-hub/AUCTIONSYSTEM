@@ -1,0 +1,111 @@
+/* CustomSelect Scoped Styles */
+
+.custom-select-group {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-1.5);
+  width: 100%;
+}
+
+.custom-select-label {
+  font-size: var(--text-micro);
+  font-weight: bold;
+  text-transform: uppercase;
+  color: var(--text-muted);
+  letter-spacing: 0.05em;
+}
+
+.custom-select-rel {
+  position: relative;
+  width: 100%;
+}
+
+.custom-select-btn {
+  width: 100%;
+  height: 44px;
+  background-color: var(--bg-elevated);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  padding: 0 var(--sp-4);
+  color: var(--text-primary);
+  font-size: var(--text-secondary);
+  font-weight: var(--weight-medium);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  cursor: pointer;
+  transition: var(--transition-fast);
+  outline: none;
+}
+
+.custom-select-btn:hover {
+  border-color: var(--accent-border);
+  background-color: var(--bg-hover);
+}
+
+.custom-select-btn--open {
+  border-color: var(--accent);
+  box-shadow: 0 0 0 2px var(--accent-muted);
+}
+
+.custom-select-val {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.custom-select-chevron {
+  width: 16px;
+  height: 16px;
+  color: var(--text-muted);
+  transition: transform var(--transition-fast);
+  flex-shrink: 0;
+}
+
+.custom-select-chevron--rotate {
+  transform: rotate(180deg);
+  color: var(--accent);
+}
+
+.custom-select-menu {
+  position: absolute;
+  top: calc(100% + 6px);
+  left: 0;
+  right: 0;
+  background-color: var(--bg-surface);
+  border: 1px solid var(--border-strong);
+  border-radius: var(--radius-xl);
+  box-shadow: var(--shadow-lg);
+  padding: var(--sp-2);
+  z-index: 100;
+  max-height: 240px;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.custom-select-item {
+  width: 100%;
+  padding: var(--sp-3) var(--sp-4);
+  border-radius: var(--radius-lg);
+  background: transparent;
+  border: none;
+  color: var(--text-secondary);
+  font-size: var(--text-secondary);
+  font-weight: var(--weight-medium);
+  text-align: left;
+  cursor: pointer;
+  transition: var(--transition-fast);
+}
+
+.custom-select-item:hover {
+  background-color: var(--bg-hover);
+  color: var(--text-primary);
+}
+
+.custom-select-item--active {
+  background-color: var(--accent-muted);
+  color: var(--accent-light);
+  font-weight: bold;
+}

@@ -200,8 +200,8 @@ const registerAuctionSockets = (io) => {
         });
 
         // Forced DB refresh to keep clients in sync when a player or team is modified
-        socket.on('data_update', async ({ auctionId }) => {
-            if (!auctionId) return;
+        socket.on('data_update', async ({ auctionId, token }) => {
+            if (!auctionId || !token || !verifySocketToken(token)) return;
             const idStr = String(auctionId);
             try {
                 const [teams, players] = await Promise.all([

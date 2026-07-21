@@ -177,6 +177,7 @@ class AuctionEngine {
         const idStr = String(auctionId);
         const state = this.rooms.get(idStr);
         if (!state || state.status !== 'ACTIVE') throw new Error('Auction not active');
+        if (typeof amount !== 'number' || isNaN(amount) || amount <= 0) throw new Error('Bid must be a positive number');
         
         // Concurrency Guard
         if (state.leadingTeamId === null) {
@@ -216,6 +217,7 @@ class AuctionEngine {
         const player = state.players.get(pId);
         if (player) {
             player.isSold = true;
+            player.isUnsold = false;
             player.soldTo = tId;
             player.soldPrice = price;
             player.bidHistory = [...state.bidHistory];
@@ -236,7 +238,7 @@ class AuctionEngine {
         // Isolated write queue synchronization task
         this.queueWrite(idStr, async () => {
             await Promise.all([
-                Player.findByIdAndUpdate(pId, { isSold: true, soldTo: tId, soldPrice: price, bidHistory: state.bidHistory }),
+                Player.findByIdAndUpdate(pId, { isSold: true, isUnsold: false, soldTo: tId, soldPrice: price, bidHistory: state.bidHistory }),
                 Team.findByIdAndUpdate(tId, { $inc: { spent: price }, $push: { players: pId } })
             ]);
             state.lastSavedVersion = currentVersion;

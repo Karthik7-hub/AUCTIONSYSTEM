@@ -36,6 +36,7 @@
   display: flex;
   flex-wrap: nowrap;
   overflow-x: auto;
+  justify-content: safe center;
   gap: var(--sp-2);
   width: 100%;
   /* hide scrollbar visually on all browsers */

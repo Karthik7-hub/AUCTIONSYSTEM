@@ -4,7 +4,9 @@
   "description": "Monorepo containing client and server auction systems",
   "main": "start.js",
   "scripts": {
-    "start": "node start.js"
+    "start": "node start.js",
+    "server": "cd server && npm run dev",
+    "client": "cd client && npm run dev"
   },
   "keywords": [],
   "author": "",

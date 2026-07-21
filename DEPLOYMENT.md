@@ -11,7 +11,6 @@ graph LR
     User([User Browser]) -->|HTTPS| Frontend[Frontend Client<br/>Vercel / Netlify / Cloudflare]
     User -->|WSS / HTTPS| Backend[Backend Server<br/>Render / Railway / Heroku]
     Backend -->|MongoDB Protocol| Database[(MongoDB Atlas)]
-    Backend -->|HTTPS API| ImageKit[ImageKit CDN]
 ```
 
 Since the client and server run on different domains, cross-origin resource sharing (CORS) is configured dynamically on the server using environment variables to ensure secure communication.
@@ -85,9 +84,6 @@ Set the following environment variables on your server's hosting dashboard:
 | `JWT_SECRET` | **Yes** | Secret key for signing client tokens. Use a strong random key. | `generate_with_random_string` |
 | `JWT_REFRESH_SECRET` | **Yes** | Secret key for signing refresh tokens. | `generate_with_random_string` |
 | `SUPER_ADMIN_PASSWORD` | **Yes** | Password to access the Super Admin control panel. | `secure_admin_password_123` |
-| `IMAGEKIT_PUBLIC_KEY` | **Yes** | Public key from your ImageKit account. | `public_...` |
-| `IMAGEKIT_PRIVATE_KEY` | **Yes** | Private key from your ImageKit account. | `private_...` |
-| `IMAGEKIT_URL_ENDPOINT` | **Yes** | URL Endpoint from your ImageKit account. | `https://ik.imagekit.io/...` |
 | `CLIENT_URL` | **Yes** | Allowed CORS origins. Separate multiple URLs with commas. | `https://auction-system.vercel.app` |
 
 > [!IMPORTANT]

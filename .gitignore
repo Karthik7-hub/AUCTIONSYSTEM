@@ -1,6 +1,12 @@
-# Roots & Packages Node Modules
+# Node Modules & Dependencies
 node_modules/
 **/node_modules/
+package-lock.json
+**/package-lock.json
+yarn.lock
+**/yarn.lock
+pnpm-lock.yaml
+**/pnpm-lock.yaml
 
 # Production Build Outputs
 dist/
@@ -17,7 +23,10 @@ out/
 .env.test.local
 .env.production.local
 **/.env
-**/.env.*
+**/.env.local
+**/.env.development
+**/.env.production
+!**/.env.example
 
 # Logs
 logs
@@ -47,7 +56,7 @@ desktop.ini
 coverage/
 **/coverage/
 
-# Local cache
+# Local Cache & Tooling
 .eslintcache
 .parcel-cache
 .turbo/

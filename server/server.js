@@ -34,7 +34,8 @@ const checkOrigin = (origin, callback) => {
     if (!origin || allowedOrigins === '*' || allowedOrigins.includes(origin) || allowedOrigins.includes(origin.replace(/\/$/, ''))) {
         callback(null, true);
     } else {
-        callback(null, true); // Allow connection to prevent breaking app in production while logging warning
+        console.warn(`⚠️ CORS blocked request from unauthorized origin: ${origin}`);
+        callback(new Error(`CORS Policy Violation: Access from origin ${origin} is blocked.`));
     }
 };
 

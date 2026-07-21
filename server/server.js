@@ -64,10 +64,9 @@ app.use((req, res, next) => {
     next();
 });
 
-// Root check endpoint
-app.get("/", (req, res) => {
-    res.status(200).send("Server is alive and optimized 🚀");
-});
+// Root & Wake endpoints
+app.get("/", (req, res) => res.status(200).send("Server is alive 🚀"));
+app.get("/api/wake", (req, res) => res.status(200).send("OK"));
 
 // --- DATABASE CONNECTION ---
 connectDB();

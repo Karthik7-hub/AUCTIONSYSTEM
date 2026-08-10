@@ -231,6 +231,23 @@ export default function Settings({
                 const importedCount = res.data?.importedCount || parsedPlayers.length;
                 const errorCount = res.data?.failedCount || 0;
 
+                // Sync newly introduced roles & categories from imported players
+                let updatedRolesList = res.data?.roles;
+                if (!updatedRolesList || !Array.isArray(updatedRolesList)) {
+                    const roleSet = new Set(localRoles);
+                    parsedPlayers.forEach(p => { if (p.role) roleSet.add(p.role); });
+                    updatedRolesList = Array.from(roleSet);
+                }
+                setLocalRoles(updatedRolesList);
+
+                let updatedCatsList = res.data?.categories;
+                if (!updatedCatsList || !Array.isArray(updatedCatsList)) {
+                    const catSet = new Set(localCategories);
+                    parsedPlayers.forEach(p => { if (p.category) catSet.add(p.category); });
+                    updatedCatsList = Array.from(catSet);
+                }
+                setLocalCategories(updatedCatsList);
+
                 let msg = `Successfully imported ${importedCount} player(s).`;
                 if (errorCount > 0) {
                     msg += ` (${errorCount} duplicate/invalid rows skipped)`;
@@ -284,7 +301,7 @@ export default function Settings({
                             <div className="settings-setup__badge-strip">
                                 {localRoles.map(r => (
                                     <span key={r} className="settings-setup__editable-chip">
-                                        <span>{r}</span>
+                                        <span className="settings-setup__chip-text">{r}</span>
                                         <button
                                             type="button"
                                             onClick={() => handleRemoveRole(r)}
@@ -317,7 +334,7 @@ export default function Settings({
                             <div className="settings-setup__badge-strip">
                                 {localCategories.map(c => (
                                     <span key={c} className="settings-setup__editable-chip">
-                                        <span>{c}</span>
+                                        <span className="settings-setup__chip-text">{c}</span>
                                         <button
                                             type="button"
                                             onClick={() => handleRemoveCategory(c)}

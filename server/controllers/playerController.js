@@ -193,7 +193,9 @@ const bulkCreatePlayers = async (req, res) => {
             importedCount: createdPlayers.length,
             failedCount: errors.length,
             errors,
-            players: createdPlayers
+            players: createdPlayers,
+            roles: auctionObj.roles,
+            categories: auctionObj.categories
         });
     } catch (err) {
         res.status(500).json({ error: err.message });

@@ -7,11 +7,18 @@ export default function useActivityPanel(players) {
 
     const sortedFeedPlayers = useMemo(() => {
         const soldPlayers = players.filter(p => p.isSold);
+
+        const getSoldTime = (p) => {
+            if (p.soldAt) return new Date(p.soldAt).getTime();
+            if (p.updatedAt) return new Date(p.updatedAt).getTime();
+            return 0;
+        };
+
         if (feedSort === 'recent') {
-            return [...soldPlayers].reverse();
+            return [...soldPlayers].sort((a, b) => getSoldTime(b) - getSoldTime(a));
         }
         if (feedSort === 'oldest') {
-            return [...soldPlayers];
+            return [...soldPlayers].sort((a, b) => getSoldTime(a) - getSoldTime(b));
         }
         if (feedSort === 'price-desc') {
             return [...soldPlayers].sort((a, b) => (b.soldPrice || 0) - (a.soldPrice || 0));

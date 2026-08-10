@@ -13,6 +13,14 @@ const getContrastColor = (hexColor) => {
     return (yiq >= 128) ? '#000000' : '#ffffff';
 };
 
+const SORT_OPTIONS = [
+    { value: 'recent', label: 'Recent Purchases', shortLabel: 'Recent' },
+    { value: 'oldest', label: 'Oldest Purchases', shortLabel: 'Oldest' },
+    { value: 'price-desc', label: 'Price: High to Low', shortLabel: 'Price: High-Low' },
+    { value: 'price-asc', label: 'Price: Low to High', shortLabel: 'Price: Low-High' },
+    { value: 'name-asc', label: 'Name: A to Z', shortLabel: 'Name: A-Z' }
+];
+
 export default function ActivityPanel({ players, teamMap }) {
     const {
         feedSort,
@@ -23,6 +31,8 @@ export default function ActivityPanel({ players, teamMap }) {
         setHistoryPlayer,
         sortedFeedPlayers
     } = useActivityPanel(players);
+
+    const activeSortLabel = SORT_OPTIONS.find(opt => opt.value === feedSort)?.shortLabel || 'Recent';
 
     return (
         <div className="feed">
@@ -42,25 +52,13 @@ export default function ActivityPanel({ players, teamMap }) {
                         className="feed__sort-btn tr-hover"
                     >
                         <ListFilter className="w-4 h-4" />
-                        <span>
-                            {feedSort === 'recent' && 'Recent'}
-                            {feedSort === 'oldest' && 'Oldest'}
-                            {feedSort === 'price-desc' && 'Price: High-Low'}
-                            {feedSort === 'price-asc' && 'Price: Low-High'}
-                            {feedSort === 'name-asc' && 'Name: A-Z'}
-                        </span>
+                        <span>{activeSortLabel}</span>
                         <ChevronDown className={`w-3.5 h-3.5 feed__sort-icon-chevron ${isSortMenuOpen ? 'feed__sort-icon-chevron--open' : ''}`} />
                     </button>
 
                     {isSortMenuOpen && (
                         <div className="feed__sort-menu">
-                            {[
-                                { value: 'recent', label: 'Recent Purchases' },
-                                { value: 'oldest', label: 'Oldest Purchases' },
-                                { value: 'price-desc', label: 'Price: High to Low' },
-                                { value: 'price-asc', label: 'Price: Low to High' },
-                                { value: 'name-asc', label: 'Name: A to Z' }
-                            ].map(opt => (
+                            {SORT_OPTIONS.map(opt => (
                                 <button
                                     key={opt.value}
                                     onClick={() => {

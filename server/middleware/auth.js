@@ -12,7 +12,7 @@ const signTokens = (payload) => ({
 // Middleware: verify host or super admin access token
 const verifyHostToken = (req, res, next) => {
     const auth = req.headers.authorization;
-    if (!auth?.startsWith('Bearer ')) return res.status(401).json({ error: 'No token provided' });
+    if (!auth?.startsWith('Bearer ')) return res.status(401).json({ error: 'No token' });
     try {
         req.tokenPayload = jwt.verify(auth.slice(7), JWT_SECRET);
         if (req.tokenPayload.role !== 'host' && req.tokenPayload.role !== 'super_admin') {

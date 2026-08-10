@@ -5,20 +5,23 @@ const http = axios.create({ baseURL: API_URL });
 
 // --- REQUEST INTERCEPTOR ---
 // Automatically attach Authorization header using the token stored for the current context.
-// We peek at the URL to determine which token to use.
 http.interceptors.request.use((config) => {
     let token = null;
 
-    if (config.url?.includes('/api/super-admin') || config.url?.includes('/api/verify-super-token')) {
-        token = localStorage.getItem('sa_access_token');
-    } else {
-        // For host endpoints: find first matching access token in storage
-        // The AuctionLayout will set a global window.__auctionId for context
-        const auctionId = window.__auctionId;
-        if (auctionId) token = localStorage.getItem(`access_token_${auctionId}`);
+    // 1. If auction context is active, prefer host access token for that auction
+    const auctionId = window.__auctionId;
+    if (auctionId) {
+        token = localStorage.getItem(`access_token_${auctionId}`);
     }
 
-    if (token) config.headers.Authorization = `Bearer ${token}`;
+    // 2. If no host token for current auction, check for super admin token
+    if (!token) {
+        token = localStorage.getItem('sa_access_token');
+    }
+
+    if (token) {
+        config.headers.Authorization = `Bearer ${token}`;
+    }
     return config;
 });
 

@@ -117,24 +117,23 @@ export default function ControlsSidebar({
                 {sidebarTab === 'unsold' && (
                     <div className="sidebar__list">
                         {unsoldPlayers.map(p => {
-                            const isUnsoldRound = setStatusList.allCompleted;
+                            const isClickable = !isCompleted;
                             return (
                                 <div
                                     key={p._id}
-                                    onClick={isUnsoldRound && !isCompleted ? () => startPlayer(p) : null}
-                                    className={`sidebar__card ${isUnsoldRound ? 'sidebar__card--recallable' : 'sidebar__card--locked'}`}
+                                    onClick={isClickable ? () => startPlayer(p) : null}
+                                    className={`sidebar__card ${isClickable ? 'sidebar__card--recallable' : 'sidebar__card--locked'}`}
                                 >
                                     <div className="sidebar__card-row">
                                         <div className="sidebar__card-title">{p.name}</div>
-                                        {!isUnsoldRound && (
-                                            <span className="sidebar__card-status sidebar__card-status--locked">Locked</span>
-                                        )}
-                                        {isUnsoldRound && !isCompleted && (
+                                        {isClickable ? (
                                             <span className="sidebar__card-status sidebar__card-status--recall">Recall</span>
+                                        ) : (
+                                            <span className="sidebar__card-status sidebar__card-status--locked">Completed</span>
                                         )}
                                     </div>
                                     <div className="sidebar__card-sub">
-                                        <Badge variant={isUnsoldRound ? 'danger' : 'secondary'}>{p.role}</Badge>
+                                        <Badge variant={isClickable ? 'danger' : 'secondary'}>{p.role}</Badge>
                                         <span className="sidebar__card-value">₹{p.basePrice}L</span>
                                     </div>
                                 </div>

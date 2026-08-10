@@ -61,6 +61,16 @@ const registerAuctionSockets = (io) => {
             state.status = 'ACTIVE';
             state.bidHistory = [];
             state.version += 1;
+
+            // Reset sold/unsold flags if player was previously unsold or sold
+            if (cachedPlayer && (cachedPlayer.isUnsold || cachedPlayer.isSold)) {
+                cachedPlayer.isUnsold = false;
+                cachedPlayer.isSold = false;
+                cachedPlayer.soldTo = null;
+                cachedPlayer.soldPrice = 0;
+                cachedPlayer.soldAt = null;
+            }
+
             io.to(idStr).emit('auction_state', {
                 currentBid: state.currentBid,
                 leadingTeamId: state.leadingTeamId,
@@ -68,6 +78,21 @@ const registerAuctionSockets = (io) => {
                 status: state.status,
                 bidHistory: state.bidHistory
             });
+
+            try {
+                const updatedPlayer = await Player.findByIdAndUpdate(
+                    playerId,
+                    { isSold: false, isUnsold: false, soldTo: null, soldPrice: 0, soldAt: null },
+                    { new: true }
+                ).lean();
+
+                if (updatedPlayer) {
+                    AuctionEngine.addOrUpdatePlayer(idStr, updatedPlayer);
+                    io.to(idStr).emit('player_updated', { player: updatedPlayer });
+                }
+            } catch (err) {
+                console.error("❌ Error resetting player status on start_player:", err);
+            }
         });
 
         socket.on('place_bid', async ({ auctionId, teamId, amount, token }) => {

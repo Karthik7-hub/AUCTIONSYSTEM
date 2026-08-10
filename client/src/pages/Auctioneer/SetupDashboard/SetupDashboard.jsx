@@ -305,10 +305,15 @@ export default function SetupDashboard({ data, auctionId, onRefresh, config, onL
                     <SettingsTab
                         auctionName={auctionName}
                         auctionCode={auctionCode}
+                        config={config}
+                        data={data}
                         roles={roles}
                         categories={categories}
                         theme={theme}
                         setTheme={setTheme}
+                        onRefresh={onRefresh}
+                        showAlert={showAlert}
+                        showConfirm={showConfirm}
                         onLogout={onLogout || (() => { clearTokens(auctionId); navigate(`/auction/${config?.slug || auctionId}`); })}
                     />
                 )}

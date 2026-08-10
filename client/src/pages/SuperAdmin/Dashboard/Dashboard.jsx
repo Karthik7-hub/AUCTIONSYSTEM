@@ -4,7 +4,7 @@ import {
     Trash2, ExternalLink, Key, Shield, Plus, LogOut,
     Save, Edit2, Power, Layers, Users, Zap, Search,
     Clock, Archive, RotateCcw, Upload, Download, FileSpreadsheet,
-    AlertTriangle, CheckCircle, Eye, Settings, Gavel
+    AlertTriangle, CheckCircle, Eye, EyeOff, Settings, Gavel
 } from 'lucide-react';
 import {
     getAuctions, getArchivedAuctions, createAuction,
@@ -30,6 +30,14 @@ export default function Dashboard() {
     // --- UI STATES ---
     const [activeTab, setActiveTab] = useState('active'); // 'active', 'completed', or 'archived'
     const [searchQuery, setSearchQuery] = useState('');
+    const [visibleAccessCodes, setVisibleAccessCodes] = useState({});
+
+    const toggleAccessCodeVisibility = (auctionId) => {
+        setVisibleAccessCodes(prev => ({
+            ...prev,
+            [auctionId]: !prev[auctionId]
+        }));
+    };
 
     // --- MODAL STATES ---
     const [showCreate, setShowCreate] = useState(false);
@@ -846,7 +854,17 @@ export default function Dashboard() {
                                 <div className="super-card-badge-row">
                                     <div className="super-card-key-badge">
                                         <Key className="w-4 h-4" style={{ color: 'var(--slate-500)' }} />
-                                        <span className="font-mono font-bold">{auction.accessCode}</span>
+                                        <span className="font-mono font-bold">
+                                            {visibleAccessCodes[auction._id] ? auction.accessCode : '••••••••'}
+                                        </span>
+                                        <button
+                                            type="button"
+                                            onClick={() => toggleAccessCodeVisibility(auction._id)}
+                                            className="super-card-eye-btn"
+                                            title={visibleAccessCodes[auction._id] ? 'Hide Access Code' : 'Show Access Code'}
+                                        >
+                                            {visibleAccessCodes[auction._id] ? <EyeOff className="w-3.5 h-3.5" /> : <Eye className="w-3.5 h-3.5" />}
+                                        </button>
                                     </div>
                                     <div className="md-block hidden"><Layers className="w-4 h-4" /> {auction.categories?.length || 0} Cats</div>
                                     <div className="md-block hidden"><Users className="w-4 h-4" /> {auction.roles?.length || 0} Roles</div>

@@ -2,15 +2,16 @@ const express = require('express');
 const router = express.Router();
 const auctionController = require('../controllers/auctionController');
 const resultsController = require('../controllers/resultsController');
+const { verifyHostToken, verifySuperAdminToken } = require('../middleware/auth');
 
-router.post('/api/create-auction', auctionController.createAuction);
+router.post('/api/create-auction', verifySuperAdminToken, auctionController.createAuction);
 router.get('/api/auctions', auctionController.getAllAuctions);
-router.get('/api/auctions/archived', auctionController.getArchivedAuctions);
-router.patch('/api/auctions/:id/archive', auctionController.archiveAuction);
-router.patch('/api/auctions/:id/restore', auctionController.restoreAuction);
-router.put('/api/auctions/:id', auctionController.updateAuction);
+router.get('/api/auctions/archived', verifySuperAdminToken, auctionController.getArchivedAuctions);
+router.patch('/api/auctions/:id/archive', verifySuperAdminToken, auctionController.archiveAuction);
+router.patch('/api/auctions/:id/restore', verifySuperAdminToken, auctionController.restoreAuction);
+router.put('/api/auctions/:id', verifyHostToken, auctionController.updateAuction);
 router.get('/api/init/:auctionId', auctionController.initAuction);
-router.delete('/api/auctions/:id', auctionController.deleteAuction);
+router.delete('/api/auctions/:id', verifySuperAdminToken, auctionController.deleteAuction);
 
 // Results & Analytics Endpoints
 router.get('/api/auctions/:id/results', resultsController.getAuctionResults);

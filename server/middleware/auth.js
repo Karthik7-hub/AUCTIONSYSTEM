@@ -9,13 +9,15 @@ const signTokens = (payload) => ({
     refreshToken: jwt.sign(payload, JWT_REFRESH_SECRET, { expiresIn: '30d' })
 });
 
-// Middleware: verify host access token
+// Middleware: verify host or super admin access token
 const verifyHostToken = (req, res, next) => {
     const auth = req.headers.authorization;
-    if (!auth?.startsWith('Bearer ')) return res.status(401).json({ error: 'No token' });
+    if (!auth?.startsWith('Bearer ')) return res.status(401).json({ error: 'No token provided' });
     try {
         req.tokenPayload = jwt.verify(auth.slice(7), JWT_SECRET);
-        if (req.tokenPayload.role !== 'host') return res.status(403).json({ error: 'Forbidden' });
+        if (req.tokenPayload.role !== 'host' && req.tokenPayload.role !== 'super_admin') {
+            return res.status(403).json({ error: 'Forbidden' });
+        }
         next();
     } catch {
         res.status(401).json({ error: 'Token expired or invalid' });

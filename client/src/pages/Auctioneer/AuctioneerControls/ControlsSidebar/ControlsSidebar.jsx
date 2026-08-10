@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useMemo } from 'react';
 import { Play, AlertCircle, CheckCircle, Users, ArrowLeft, X } from 'lucide-react';
 import Button from '@shared/components/Button';
 import Badge from '@shared/components/Badge';
@@ -23,6 +23,14 @@ export default function ControlsSidebar({
     config
 }) {
     const [showExitConfirm, setShowExitConfirm] = useState(false);
+
+    const sortedSoldPlayers = useMemo(() => {
+        return [...soldPlayers].sort((a, b) => {
+            const timeA = a.soldAt ? new Date(a.soldAt).getTime() : (a.updatedAt ? new Date(a.updatedAt).getTime() : 0);
+            const timeB = b.soldAt ? new Date(b.soldAt).getTime() : (b.updatedAt ? new Date(b.updatedAt).getTime() : 0);
+            return timeB - timeA;
+        });
+    }, [soldPlayers]);
 
     return (
         <div className={`sidebar ${isSidebarOpen ? 'sidebar--open' : 'sidebar--closed'}`}>
@@ -146,7 +154,7 @@ export default function ControlsSidebar({
                 {/* VIEW: SOLD */}
                 {sidebarTab === 'sold' && (
                     <div className="sidebar__list">
-                        {soldPlayers.map(p => (
+                        {sortedSoldPlayers.map(p => (
                             <div key={p._id} className="sidebar__card sidebar__card--sold">
                                 <div className="sidebar__card-title">{p.name}</div>
                                 <div className="sidebar__card-sub" style={{ alignItems: 'center' }}>
@@ -155,7 +163,7 @@ export default function ControlsSidebar({
                                 </div>
                             </div>
                         ))}
-                        {soldPlayers.length === 0 && <div className="sidebar__empty-state">No Players Sold Yet</div>}
+                        {sortedSoldPlayers.length === 0 && <div className="sidebar__empty-state">No Players Sold Yet</div>}
                     </div>
                 )}
 
